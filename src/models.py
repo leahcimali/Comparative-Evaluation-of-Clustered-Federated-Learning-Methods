@@ -39,8 +39,5 @@ import time
 import copy
 from torch.utils.data import DataLoader, Dataset
 
-from tqdm import tqdm
-from time import sleep
-from tqdm import trange
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
