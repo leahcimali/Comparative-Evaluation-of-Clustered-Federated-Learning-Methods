@@ -10,89 +10,99 @@ from pathlib import Path
 
 
 import src.config
-from src.utils_data import load_PeMS04_flow_data, preprocess_PeMS_data, local_dataset
-from src.utils_training import train_model, prepare_training_configs
-from src.utils_fed import fed_training_plan
-
-
+from src.models import MnistNN 
+from src.fedclass import Client, Server
+from src.utils_data import data_distribution 
 seed = 42
 torch.manual_seed(seed)
 
+# CONFIG VARIABLE 
+number_of_clients = 5
+number_of_samples_by_clients = 10
+clientdata = data_distribution(number_of_clients, number_of_samples_by_clients)
+clientlist = []
+for id in range(number_of_clients):
+    clientlist.append(Client(id,clientdata[id]))
+my_server = Server(MnistNN(),4)
 
-# Get the path to the configuration file from the command-line arguments
-if len(sys.argv) != 2:
-    print("Usage: python3 experiment.py CONFIG_FILE_PATH")
-    sys.exit(1)
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from torchvision import models, transforms
+import time
+import copy
+from torch.utils.data import DataLoader, Dataset
 
-config_file_path = sys.argv[1]
+from tqdm import tqdm
+from time import sleep
+from tqdm import trange
 
-params = src.config.Params(config_file_path)
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.model_selection import train_test_split
 
-PATH_EXPERIMENTS = Path("experiments") / params.save_model_path
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-makedirs(PATH_EXPERIMENTS, exist_ok=True)
+# Load your data
+x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
 
+# Convert numpy arrays to PyTorch tensors
+x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
+y_train_tensor = torch.tensor(y_train, dtype=torch.long)
+x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
+y_test_tensor = torch.tensor(y_test, dtype=torch.long)
 
-with open(PATH_EXPERIMENTS / "train.txt", 'w') as f:
-    with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
+# Create DataLoader for train and test data
+train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
+train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
+test_loader = DataLoader(test_dataset, batch_size=64)
 
-        class_name = params.model
-        module = importlib.import_module('src.models')
-        model = getattr(module, class_name)
+# Instantiate the model
+model = MnistNN()
 
-        #  Load traffic flow dataframe and graph dataframe from PEMS
+# Define loss function and optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-        df_PeMS, distance = load_PeMS04_flow_data()
-
-        df_PeMS, adjmat, meanstd_dict = preprocess_PeMS_data(df_PeMS, params.time_serie_percentage_length,
-                                                        distance, params.init_node, params.n_neighbours,
-                                                        params.smooth, params.center_and_reduce,
-                                                        params.normalize, params.sort_by_mean)
-
-        prepare_training_configs(config_file_path, PATH_EXPERIMENTS, params, df_PeMS)
-
-        datadict = local_dataset(df=df_PeMS,
-                                nodes=params.nodes_to_filter,
-                                window_size=params.window_size,
-                                stride=params.stride,
-                                prediction_horizon=params.prediction_horizon,
-                                batch_size=params.batch_size)
-
-        if params.num_epochs_local_no_federation:
-            # Local Training
-            train_losses = {}
-            val_losses = {}
-
-            for node in range(params.number_of_nodes):
-                local_model = model(params.model_input_size, params.model_hidden_size, params.model_output_size, params.model_num_layers)
-
-                data_dict = datadict[node]
-                local_model, train_losses[node], val_losses[node] = train_model(local_model, data_dict['train'], data_dict['val'],
-                                                                        model_path=PATH_EXPERIMENTS / f'local{node}.pth',
-                                                                        num_epochs=params.num_epochs_local_no_federation,
-                                                                        remove=False, learning_rate=params.learning_rate)
-
-        # # Federated Learning Experiment
-        if params.num_epochs_local_federation:
-            main_model = model(params.model_input_size, params.model_hidden_size, params.model_output_size, params.model_num_layers)
-
-            fed_training_plan(main_model, datadict, params.communication_rounds, params.num_epochs_local_federation, model_path=PATH_EXPERIMENTS)
-
-        if params.epoch_local_retrain_after_federation:
-            # Local Training
-            train_losses = {}
-            val_losses = {}
-
-            for node in range(params.number_of_nodes):
-                print(f'Retraining the federated model locally on node {node} for {params.epoch_local_retrain_after_federation} epochs')
-                new_local_model = model(params.model_input_size, params.model_hidden_size, params.model_output_size, params.model_num_layers)
-                model_path = PATH_EXPERIMENTS / f'bestmodel_node{node}.pth'
-                local_model = model(params.model_input_size, params.model_hidden_size, params.model_output_size, params.model_num_layers)
-                local_model.load_state_dict(torch.load(model_path))
-                torch.save(local_model.state_dict(), PATH_EXPERIMENTS / f"oldmodel_node{node}.pth")
-
-                data_dict = datadict[node]
-                local_model, train_losses[node], val_losses[node] = train_model(new_local_model, data_dict['train'], data_dict['val'],
-                                                                        model_path=PATH_EXPERIMENTS / f"bestmodel_node{node}.pth",
-                                                                        num_epochs=params.epoch_local_retrain_after_federation,
-                                                                        remove=False, learning_rate=params.learning_rate)
+# Train the model
+num_epochs = 10
+for epoch in range(num_epochs):
+    model.train()  # Set the model to training mode
+    running_loss = 0.0
+    
+    # Iterate over the training dataset
+    for inputs, labels in train_loader:
+        optimizer.zero_grad()  # Zero the gradients
+        outputs = model(inputs)  # Forward pass
+        loss = criterion(outputs, labels)  # Calculate the loss
+        loss.backward()  # Backward pass
+        optimizer.step()  # Update weights
+        
+        running_loss += loss.item() * inputs.size(0)
+    
+    # Calculate average training loss for the epoch
+    epoch_loss = running_loss / len(train_dataset)
+    
+    # Evaluate the model on the test set
+    model.eval()  # Set the model to evaluation mode
+    correct = 0
+    total = 0
+    
+    # Disable gradient calculation for evaluation
+    with torch.no_grad():
+        # Iterate over the test dataset
+        for inputs, labels in test_loader:
+            outputs = model(inputs)  # Forward pass
+            _, predicted = torch.max(outputs, 1)  # Get the predicted class
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    
+    # Calculate accuracy on the test set
+    accuracy = correct / total
+    
+    # Print the loss and accuracy for each epoch
+    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')

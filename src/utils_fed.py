@@ -164,6 +164,9 @@ def model_weight_matrix(model_dict):
     return weight_matrix
 
 def k_means_cluster_id(weight_matrix, k): 
+    
+    from sklearn.cluster import KMeans
+    
     """
     Define cluster identites using k-means
     ----------
@@ -175,10 +178,9 @@ def k_means_cluster_id(weight_matrix, k):
     Returns
     -------
     pd.DataFrame
-        DataFrame with weights of each model as rows
+        Pandas Serie with cluster identity of each model
     """
     
-    from sklearn.cluster import KMeans
     
     # Initialize the KMeans model
     kmeans = KMeans(n_clusters=k, random_state=42)
@@ -191,3 +193,10 @@ def k_means_cluster_id(weight_matrix, k):
 
     clusters_identities = weight_matrix['cluster']
     return clusters_identities
+
+def clusters_model_dict(cluster_identities, model_dict, k_clusters):
+    cluster_identities = k_means_cluster_id(model_weight_matrix(model_dict), k_clusters)
+    cluster_models_dict= {cluster :{} for cluster in range(k_clusters)  }
+    for client in range(len(cluster_identities)):
+        cluster_models_dict[cluster_identities[client]][client]= model_dict[client]
+    return cluster_models_dict
