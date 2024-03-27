@@ -2,20 +2,7 @@ import torch
 class MnistNN(torch.nn.Module):
     
     """
-    Class to define model for mnist here with 6 LSTM layers and 1 fully connected layer by default
-    Parameters
-
-    ----------
-    input_size : int
-
-    hidden_size : int
-        number of hidden unit.
-
-    output_size : int 
-        number of interger classes
-
-    num_layer : int = 6
-        number of layer.
+    Class to define model for mnist 
     """
     
     def __init__(self, input_size=28*28, hidden_size=200, output_size=10):
