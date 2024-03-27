@@ -1,0 +1,15 @@
+config.py
+experiment_1.txt
+train_c16_samples100.txt
+train_client_48_sample50.txt
+train_client_48_samples10.txt
+train_client_48_samples20.txt
+train_client_48_samples30.txt
+train_client_48_samples40.txt
+train_client_48_samples50.txt
+train_client_48_samples60.txt
+train_client_48_samples90.txt
+train_client_48_samples100.txt
+train.txt
+config.json
+config.json
