@@ -13,3 +13,12 @@ train_client_48_samples100.txt
 train.txt
 config.json
 config.json
+clientside_c4800_s5_r30_e10.txt
+src/__pycache__/__init__.cpython-39.pyc
+src/__pycache__/config.cpython-39.pyc
+src/__pycache__/fedclass.cpython-39.pyc
+src/__pycache__/models.cpython-39.pyc
+src/__pycache__/utils_data.cpython-39.pyc
+src/__pycache__/utils_fed.cpython-39.pyc
+src/__pycache__/utils_training.cpython-39.pyc
+trainCFLclient copy.py
