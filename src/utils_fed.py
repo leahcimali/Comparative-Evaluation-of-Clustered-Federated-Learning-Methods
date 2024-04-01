@@ -173,6 +173,28 @@ def k_means_clustering(client_list,number_of_clusters):
     for client in client_list : 
         setattr(client, 'cluster_id',clusters_identities[client.id])
 
+def init_server_cluster(my_server,number_of_clusters=4, seed = 42):
+    from src.models import MnistNN
+    torch.manual_seed(seed)
+    my_server.clusters_models = {cluster_id: MnistNN() for cluster_id in range(4)}   
+ 
+def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
+    from src.utils_training import loss_calculation
+    import numpy as np
+    for client in client_list:
+        print('Calculating all cluster model loss on local data for client {} !'.format(client.id))
+        cluster_losses = []
+        for cluster_id in range(number_of_clusters):
+            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
+            cluster_losses.append(cluster_loss)
+        index_of_min_loss = np.argmin(cluster_losses)
+        print('Best loss with cluster model {}'.format( index_of_min_loss))
+        client.model = copy.deepcopy(my_server.clusters_models[index_of_min_loss])
+        print('test print client layer')
+        print_layer(client.model)
+        print('test print cluster layer')
+        print_layer(my_server.clusters_models[index_of_min_loss])
+        
 def client_side_clustering(my_server,client_list,number_of_clusters=4,epochs=10): 
     import numpy as np
     from src.utils_training import loss_calculation
