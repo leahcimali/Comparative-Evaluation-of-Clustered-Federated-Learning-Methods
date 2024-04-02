@@ -1,4 +1,7 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class MnistNN(torch.nn.Module):
     
     """
@@ -17,14 +20,18 @@ class MnistNN(torch.nn.Module):
         x = self.fc2(x)
         return x
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.optim import lr_scheduler
-from torchvision import models, transforms
-import time
-import copy
-from torch.utils.data import DataLoader, Dataset
+
+class SimpleLinear(nn.Module):
+
+    def __init__(self, h1=200):
+        super().__init__()
+        self.fc1 = nn.Linear(28*28, h1)
+        self.fc2 = nn.Linear(h1, 10)
+
+    def forward(self, x):
+        x = x.view(-1, 28 * 28)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

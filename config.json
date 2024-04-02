@@ -4,25 +4,12 @@
             "seed": 0,
             "number_of_clients": 48,
             "number_of_samples_of_each_labels_by_clients": 10,
-            "centralized_model_epochs": 80,
-            "federated_rounds": 40,
-            "federated_local_epochs": 20,
+            "centralized_model_epochs": 0,
+            "federated_rounds": 0,
+            "federated_local_epochs": 0,
             "cfl_before_cluster_rounds": 20,
             "cfl_after_cluster_rounds": 20,
-            "cfl_local_epochs": 20,
-            "output": "train_client_48_samples10"
-        },
-        {
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 60,
-            "centralized_model_epochs": 80,
-            "federated_rounds": 40,
-            "federated_local_epochs": 20,
-            "cfl_before_cluster_rounds": 20,
-            "cfl_after_cluster_rounds": 20,
-            "cfl_local_epochs": 20,
-            "output": "train_client_48_samples60"
-        }
-    ]
+            "cfl_local_epochs": 10,
+            "output": "server test"
+        }]
 }

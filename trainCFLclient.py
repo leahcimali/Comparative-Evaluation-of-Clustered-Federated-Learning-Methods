@@ -11,7 +11,7 @@ import torch
 
 print(torch.__version__)
 import src.config
-from src.models import MnistNN 
+from src.models import MnistNN, SimpleLinear
 from src.fedclass import Client, Server
 from src.utils_data import setup_experiment_rotation, centralize_data
 from src.utils_training import train_model, test_model
@@ -19,6 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import json
+from src.utils_fed import print_layer
+lr = 0.001
 # Load config from JSON file
 with open('clientconfig.json') as config_file:
     config_data = json.load(config_file)
@@ -46,12 +48,12 @@ for exp_id, experiment in enumerate(experiments):
     with open("./{}.txt".format(output), 'w') as f:
         with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
             # CONFIG VARIABLE 
-            model = MnistNN()
+            '''model = MnistNN()
             my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)   
             train_loader, test_loader = centralize_data(client_list)
             my_server
-
-            #centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs ) 
+            print_layer(model)'''
+            #centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs, lr = lr ) 
 
             #from src.utils_training import train_model
 
@@ -65,13 +67,27 @@ for exp_id, experiment in enumerate(experiments):
 
 
             from src.utils_fed import fed_training_plan_client_side
-            my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)
-            my_server.clusters_models = {cluster_id: MnistNN() for cluster_id in range(4)}   
-            fed_training_plan_client_side(my_server,client_list, rounds ,epochs)
+            model = SimpleLinear()
+            my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model,number_of_cluster=4)
+            my_server.num_clusters = 4
+            '''
+            if load model 
+            my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(4)} 
+            
+            for cluster_id in range(4):
+                my_server.clusters_models[cluster_id].load_state_dict(torch.load('model_{}.pth'.format(cluster_id)))
+            '''
+            print('server num clusters : ', my_server.num_clusters)
+            fed_training_plan_client_side(my_server,client_list, rounds ,epochs,lr=lr,initcluster=True)
             print('server num clusters : ', my_server.num_clusters)
             for cluster_id in range(4):
                 client_list_cluster = [client for client in client_list if client.cluster_id == cluster_id]
                 _, test_loader = centralize_data(client_list_cluster)
                 print('Federated Model Accuracy for cluster', cluster_id)
                 print("Accuracy: {:.2f}%".format(test_model(my_server.clusters_models[cluster_id], test_loader)*100))            
+            for client in client_list :
+                print('client cluster id : ', client.cluster_id)
+                print("Accuracy for client {} : {:.2f}%".format(client.id, test_model(client.model,  client.data_loader['test'])*100))                        
+                print("Accuracy for client {} with fedavg model : {:.2f}%".format(client.id, test_model(my_server.clusters_models[client.cluster_id],  client.data_loader['test'])*100))
+            
             print(config)

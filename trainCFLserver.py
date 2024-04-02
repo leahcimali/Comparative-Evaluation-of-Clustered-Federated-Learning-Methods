@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import copy
 import json
 # Load config from JSON file
+lr = 0.001
 with open('config.json') as config_file:
     config_data = json.load(config_file)
 
@@ -54,12 +55,12 @@ for exp_id, experiment in enumerate(experiments):
             my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)   
             train_loader, test_loader = centralize_data(client_list)
 
-            centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs ) 
+            centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs,learning_rate= lr ) 
 
             from src.utils_training import train_model
 
             from src.utils_fed import fed_training_plan, send_server_model_to_client
-            fed_training_plan(my_server, client_list, federated_rounds, federated_local_epochs)
+            fed_training_plan(my_server, client_list, federated_rounds, federated_local_epochs,lr= lr)
             for client in client_list : 
                 print('For client {} test data we have :'.format(client.id))
                 print("Accuracy: {:.2f}%".format(test_model(my_server.model, client.data_loader['test'])*100))
@@ -69,7 +70,7 @@ for exp_id, experiment in enumerate(experiments):
 
             from src.utils_fed import fed_training_plan_on_shot_k_means
             my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)   
-            fed_training_plan_on_shot_k_means(my_server,client_list, cfl_before_cluster_rounds , cfl_after_cluster_rounds , cfl_local_epochs)
+            fed_training_plan_on_shot_k_means(my_server,client_list, cfl_before_cluster_rounds , cfl_after_cluster_rounds , cfl_local_epochs,lr= lr)
             print('server num clusters : ', my_server.num_clusters)
             print('Federated Model Accuracy')
             print("Accuracy: {:.2f}%".format(test_fed*100))

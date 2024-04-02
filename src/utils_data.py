@@ -74,6 +74,7 @@ def data_preparation(client,rotation=0):
     if rotation > 0 :
         client.data['x'] = rotate_images(client.data['x'],rotation)
     x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=42,stratify=client.data['y'])
+    x_train, x_test = x_train/255.0 , x_test/255.0
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
@@ -84,6 +85,7 @@ def data_preparation(client,rotation=0):
     test_loader = DataLoader(test_dataset, batch_size=32)
     setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
+
 
 def setup_experiment_rotation(number_of_clients,number_of_samples_by_clients, model,number_of_cluster=1,seed =42) :
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)

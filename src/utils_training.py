@@ -8,7 +8,7 @@ import copy
 
 def train_model(model, train_loader, test_loader, num_epochs=10,learning_rate = 0.001):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     for epoch in range(num_epochs):
         model.train()  # Set the model to training mode
         running_loss = 0.0
@@ -44,8 +44,10 @@ def train_model(model, train_loader, test_loader, num_epochs=10,learning_rate = 
         accuracy = correct / total
 
         # Print the loss and accuracy for each epoch
-        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')
-    return model, epoch_loss
+        #print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')
+    print(f'Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')
+
+    return model
 
 def loss_calculation(model, train_loader): 
     import torch
