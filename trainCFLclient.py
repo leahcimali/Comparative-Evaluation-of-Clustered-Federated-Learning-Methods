@@ -19,8 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import json
-from src.utils_fed import print_layer
-lr = 0.001
+from src.metrics import report_CFL
+lr = 0.1
 # Load config from JSON file
 with open('clientconfig.json') as config_file:
     config_data = json.load(config_file)
@@ -45,40 +45,33 @@ for exp_id, experiment in enumerate(experiments):
 
 
     torch.manual_seed(seed)
+
+    # CONFIG VARIABLE 
+    '''model = MnistNN()
+    my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)   
+    train_loader, test_loader = centralize_data(client_list)
+    my_server
+    print_layer(model)'''
+    #centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs, lr = lr ) 
+
+    #from src.utils_training import train_model
+
+    #from src.utils_fed import fed_training_plan, send_server_model_to_client
+    #fed_training_plan(my_server, client_list, federated_rounds, federated_local_epochs)
+    #for client in client_list : 
+    #    print('For client {} test data we have :'.format(client.id))
+    #    print("Accuracy: {:.2f}%".format(test_model(my_server.model, client.data_loader['test'])*100))
+    #test_fed  = test_model(my_server.model, test_loader)
+    #test_central = test_model(centralized_model, test_loader)
+
+
+    from src.utils_fed import fed_training_plan_client_side
+    model = SimpleLinear()
+    my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model,number_of_cluster=4)
+    number_of_clusters = 4
+    fed_training_plan_client_side(my_server,client_list, rounds ,epochs,number_of_clusters=number_of_clusters,lr=lr,initcluster=True)
     with open("./{}.txt".format(output), 'w') as f:
         with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
-            # CONFIG VARIABLE 
-            '''model = MnistNN()
-            my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)   
-            train_loader, test_loader = centralize_data(client_list)
-            my_server
-            print_layer(model)'''
-            #centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs, lr = lr ) 
-
-            #from src.utils_training import train_model
-
-            #from src.utils_fed import fed_training_plan, send_server_model_to_client
-            #fed_training_plan(my_server, client_list, federated_rounds, federated_local_epochs)
-            #for client in client_list : 
-            #    print('For client {} test data we have :'.format(client.id))
-            #    print("Accuracy: {:.2f}%".format(test_model(my_server.model, client.data_loader['test'])*100))
-            #test_fed  = test_model(my_server.model, test_loader)
-            #test_central = test_model(centralized_model, test_loader)
-
-
-            from src.utils_fed import fed_training_plan_client_side
-            model = SimpleLinear()
-            my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model,number_of_cluster=4)
-            my_server.num_clusters = 4
-            '''
-            if load model 
-            my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(4)} 
-            
-            for cluster_id in range(4):
-                my_server.clusters_models[cluster_id].load_state_dict(torch.load('model_{}.pth'.format(cluster_id)))
-            '''
-            print('server num clusters : ', my_server.num_clusters)
-            fed_training_plan_client_side(my_server,client_list, rounds ,epochs,lr=lr,initcluster=True)
             print('server num clusters : ', my_server.num_clusters)
             for cluster_id in range(4):
                 client_list_cluster = [client for client in client_list if client.cluster_id == cluster_id]
@@ -86,3 +79,4 @@ for exp_id, experiment in enumerate(experiments):
                 print('Federated Model Accuracy for cluster', cluster_id)
                 print("Accuracy: {:.2f}%".format(test_model(my_server.clusters_models[cluster_id], test_loader)*100))                        
             print(config)
+            report_CFL(my_server,client_list)

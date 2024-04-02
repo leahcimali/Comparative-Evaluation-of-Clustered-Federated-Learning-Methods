@@ -25,7 +25,7 @@ def send_server_model_to_client(client_list, my_server):
                 setattr(client, 'model', copy.deepcopy(my_server.clusters_models[client.cluster_id]))
 
 import copy
-
+'''
 def fedavg(my_server, client_list):
 
     """
@@ -67,9 +67,60 @@ def fedavg(my_server, client_list):
             
             # Store the new model in the server's cluster models
             my_server.clusters_models[cluster_id] = new_model
+'''           
 
+def model_avg(client_list):
+    new_model = copy.deepcopy(client_list[0].model)
+        
+    # Initialize a variable to store the total size of all local training datasets
+    total_data_size = sum(len(client.data_loader['train'].dataset) for client in client_list)
+    
+    # Iterate over the parameters of the new model
+    for name, param in new_model.named_parameters():
+        # Initialize the weighted averaged parameter with zeros
+        weighted_avg_param = torch.zeros_like(param)
+        
+        # Accumulate the parameters across all clients, ponderated by local data size
+        for client in client_list:
+            # Calculate the weight based on the local data size
+            data_size = len(client.data_loader['train'].dataset)
+            weight = data_size / total_data_size
+            
+            # Add the weighted parameters of the current client
+            weighted_avg_param += client.model.state_dict()[name] * weight
+        
+        # Assign the weighted averaged parameter to the new model
+        param.data = weighted_avg_param
+        
+        return new_model
+    
+def fedavg(my_server,client_list):
+    """
+    Perform a weighted average of model parameters across clients,
+    where the weight is determined by the size of each client's
+    local training dataset. Return a new model with the averaged parameters.
 
-def fed_training_plan(my_server, client_list,rounds=3, epoch=200,lr =0.001 ):
+    Args:
+        client_list (list): List of clients, each containing a PyTorch model and a data loader.
+
+    Returns:
+        torch.nn.Module: A new PyTorch model with the weighted averaged parameters.
+    """
+    if my_server.num_clusters == None:
+        # Initialize a new model
+        my_server.model = model_avg(client_list)
+    else : 
+         for cluster_id in range(my_server.num_clusters):
+            print('FedAVG on cluster {}!'.format(cluster_id))
+            # Filter clients belonging to the current cluster
+            cluster_client_list = [client for client in client_list if client.cluster_id == cluster_id]
+            if len(cluster_client_list)>0 :  
+                print('Number of clients in cluster {}: {}'.format(cluster_id, len(cluster_client_list)))
+                my_server.clusters_models[cluster_id] = model_avg(cluster_client_list)
+            else : 
+                print('No client in cluster ', cluster_id) 
+
+def fed_training_plan(my_server, client_list,rounds=3, epoch=200,lr =0.001):
     """
     Controler function to launch federated learning
 
@@ -171,14 +222,6 @@ def k_means_cluster_id(weight_matrix, k):
     return clusters_identities
 
 
-
-def print_layer(model):
-    first_layer_params = list(model.parameters())[2]
-    # Extract the weight tensor from the parameters
-    first_layer_weights = first_layer_params.data
-    # Now you can use first_layer_weights as needed
-    print(first_layer_weights)
-
 def k_means_clustering(client_list,number_of_clusters): 
     weight_matrix = model_weight_matrix(client_list)
     clusters_identities = k_means_cluster_id(weight_matrix, number_of_clusters)
@@ -250,7 +293,7 @@ def calculate_cluster_id(my_server,client_list, number_of_clusters=4):
         client.cluster_id = index_of_min_loss
     listofcluster = [client.cluster_id for client in client_list]
     return listofcluster
-
+'''
 def client_fedavg(my_server, client_list):
     """
     Implementation of the FedAvg Algorithm with cluster-based averaging.
@@ -280,6 +323,7 @@ def client_fedavg(my_server, client_list):
         
         # Store the new model in the server's cluster models
         my_server.clusters_models[cluster_id] = new_model
+'''
             
 def init_server_cluster(my_server,client_list, number_of_clusters=4, seed = 42):
     from src.models import MnistNN, SimpleLinear
@@ -360,20 +404,14 @@ def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, num
     """
     from src.utils_training import train_model
     if initcluster == True : 
-        init_server_cluster(my_server,client_list, number_of_clusters=4, seed = 42)
+        init_server_cluster(my_server,client_list, number_of_clusters=number_of_clusters, seed = 42)
     for round in range(0, rounds):
         print('Init round {} :'.format(round+1))
-        set_client_cluster(my_server, client_list, number_of_clusters=4, epochs=10)
+        set_client_cluster(my_server, client_list, number_of_clusters=number_of_clusters, epochs=10)
         for client in client_list:
             print('Training local model for client {} !'.format(client.id))
             client.model = train_model(client.model, client.data_loader['train'], client.data_loader['test'],epoch,learning_rate=lr)
         print('Aggregating local models with FedAVG !')
-        for i in range(4):
-            print('model befor fedavg') 
-            print_layer(my_server.clusters_models[i])
-        client_fedavg(my_server, client_list)
-        for i in range(4): 
-            print('model after fedavg') 
-            print_layer(my_server.clusters_models[i])
+        fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))
         

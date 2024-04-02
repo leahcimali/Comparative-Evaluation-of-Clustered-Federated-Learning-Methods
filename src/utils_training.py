@@ -8,7 +8,8 @@ import copy
 
 def train_model(model, train_loader, test_loader, num_epochs=10,learning_rate = 0.001):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.SGD(model.parameters(), lr=learning_rate) 
+    
     for epoch in range(num_epochs):
         model.train()  # Set the model to training mode
         running_loss = 0.0

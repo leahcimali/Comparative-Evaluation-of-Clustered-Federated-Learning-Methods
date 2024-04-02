@@ -85,7 +85,7 @@ def data_preparation(client,rotation=0):
     test_loader = DataLoader(test_dataset, batch_size=32)
     setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
-
+    setattr(client,'rotation',rotation)
 
 def setup_experiment_rotation(number_of_clients,number_of_samples_by_clients, model,number_of_cluster=1,seed =42) :
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
@@ -98,9 +98,9 @@ def setup_experiment_rotation(number_of_clients,number_of_samples_by_clients, mo
     for i in range(4):
         start_index = i * n
         end_index = (i + 1) * n
-        elements = clientlist[start_index:end_index]
-        for element in elements:
-            data_preparation(element,90*i)
+        clientlistrotated = clientlist[start_index:end_index]
+        for client in clientlistrotated:
+            data_preparation(client,90*i)
     return my_server, clientlist
 
 def centralize_data(clientlist):
