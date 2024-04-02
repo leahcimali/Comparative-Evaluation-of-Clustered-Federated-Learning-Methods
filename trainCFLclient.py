@@ -84,10 +84,5 @@ for exp_id, experiment in enumerate(experiments):
                 client_list_cluster = [client for client in client_list if client.cluster_id == cluster_id]
                 _, test_loader = centralize_data(client_list_cluster)
                 print('Federated Model Accuracy for cluster', cluster_id)
-                print("Accuracy: {:.2f}%".format(test_model(my_server.clusters_models[cluster_id], test_loader)*100))            
-            for client in client_list :
-                print('client cluster id : ', client.cluster_id)
-                print("Accuracy for client {} : {:.2f}%".format(client.id, test_model(client.model,  client.data_loader['test'])*100))                        
-                print("Accuracy for client {} with fedavg model : {:.2f}%".format(client.id, test_model(my_server.clusters_models[client.cluster_id],  client.data_loader['test'])*100))
-            
+                print("Accuracy: {:.2f}%".format(test_model(my_server.clusters_models[cluster_id], test_loader)*100))                        
             print(config)

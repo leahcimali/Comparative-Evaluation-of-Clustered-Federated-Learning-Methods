@@ -1,14 +1,14 @@
 {
     "experiments": [ 
         {
-            "seed": 0,
-            "number_of_clients": 48,
+            "seed": 42,
+            "number_of_clients": 16,
             "number_of_samples_of_each_labels_by_clients": 10,
-            "centralized_model_epochs": 0,
-            "federated_rounds": 0,
-            "federated_local_epochs": 0,
+            "centralized_model_epochs": 100,
+            "federated_rounds": 50,
+            "federated_local_epochs": 10,
             "cfl_before_cluster_rounds": 20,
-            "cfl_after_cluster_rounds": 20,
+            "cfl_after_cluster_rounds": 30,
             "cfl_local_epochs": 10,
             "output": "server test"
         }]

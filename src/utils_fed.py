@@ -43,18 +43,30 @@ def fedavg(my_server, client_list):
         my_server.model.load_state_dict(state_dict)
     else:
         for cluster_id in range(my_server.num_clusters):
-            print('FedAVG on cluster {} ! '.format(cluster_id))
-            # Define the client list of the current cluster
+            print('FedAVG on cluster {}!'.format(cluster_id))
+            # Filter clients belonging to the current cluster
             cluster_client_list = [client for client in client_list if client.cluster_id == cluster_id]
-            # Do fedavg 
-            state_dict = cluster_client_list[0].model.state_dict()
-            for name, param in cluster_client_list[0].model.named_parameters():
-                for i in range(1, len(cluster_client_list)):
-                    state_dict[name] += cluster_client_list[i].model.state_dict()[name]
-                state_dict[name] /= len(cluster_client_list)      
-            new_model = copy.deepcopy(my_server.model)
-            new_model.load_state_dict(state_dict)
-            my_server.clusters_models['cluster_id'] = new_model
+            print('Number of clients in cluster {}: {}'.format(cluster_id, len(cluster_client_list)))
+            
+            # Initialize a dictionary to store parameter sums
+            param_sums = {name: torch.zeros_like(param.data) for name, param in cluster_client_list[0].model.named_parameters()}
+            
+            # Sum up parameters from all clients
+            total_clients = len(cluster_client_list)
+            for client in cluster_client_list:
+                for name, param in client.model.named_parameters():
+                    param_sums[name] += param.data
+            
+            # Average parameters
+            averaged_params = {name: param_sum / total_clients for name, param_sum in param_sums.items()}
+            
+            # Create a new model and load averaged parameters
+            new_model = copy.deepcopy(cluster_client_list[0].model)  # Assuming all models have the same architecture
+            for name, param in new_model.named_parameters():
+                param.data = averaged_params[name]
+            
+            # Store the new model in the server's cluster models
+            my_server.clusters_models[cluster_id] = new_model
 
 
 def fed_training_plan(my_server, client_list,rounds=3, epoch=200,lr =0.001 ):
