@@ -75,8 +75,6 @@ for exp_id, experiment in enumerate(experiments):
             print('server num clusters : ', my_server.num_clusters)
             for cluster_id in range(4):
                 client_list_cluster = [client for client in client_list if client.cluster_id == cluster_id]
-                _, test_loader = centralize_data(client_list_cluster)
-                print('Federated Model Accuracy for cluster', cluster_id)
-                print("Accuracy: {:.2f}%".format(test_model(my_server.clusters_models[cluster_id], test_loader)*100))                        
+                print('Federated Model Accuracy for cluster', cluster_id)                       
             print(config)
             report_CFL(my_server,client_list)
