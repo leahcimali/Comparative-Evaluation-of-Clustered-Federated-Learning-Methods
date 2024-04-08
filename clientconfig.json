@@ -1,177 +1,35 @@
 {
     "experiments": [
-{
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 70,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed42samples70"
-        },{
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 80,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed42samples80"
-        },{
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 90,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed42samples90"
-        },{
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 100,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed42samples100"
-        },
+        
         {
-            "seed": 0,
+            "seed": 42,
             "number_of_clients": 48,
             "number_of_samples_of_each_labels_by_clients": 10,
             "federated_rounds": 50,
             "federated_local_epochs": 10,
-            "output": "clientseed0samples10"
+            "number_of_clusters" : 4,
+            "output": "clientrotation", 
+            "heterogeneity": "concept_shift_on_features"
+        }
+,{
+            "seed": 42,
+            "number_of_clients": 60 ,
+            "number_of_samples_of_each_labels_by_clients": 10 ,
+            "federated_rounds": 50,
+            "federated_local_epochs": 10,
+            "number_of_clusters" : 6,
+            "output": "clientswap", 
+            "heterogeneity": "concept_shift_on_labels"
         },
         {
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 20,
+            "seed": 42,
+            "number_of_clients": 100,
+            "number_of_samples_of_each_labels_by_clients": 200,
             "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples20"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 30,
-            "federated_rounds": 50,
-            "federated_local_epochs": 30,
-            "output": "clientseed0samples30"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 40,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples40"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 50,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples50"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 60,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples60"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 70,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples70"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 80,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples80"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 90,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples90"
-        },{
-            "seed": 0,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 100,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed0samples100"
-        },
-        {
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 10,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples10"
-        },
-        {
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 20,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples20"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 30,
-            "federated_rounds": 50,
-            "federated_local_epochs": 30,
-            "output": "clientseed82samples30"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 40,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples40"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 50,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples50"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 60,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples60"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 70,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples70"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 80,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples80"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 90,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples90"
-        },{
-            "seed": 82,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 100,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "output": "clientseed82samples100"
+            "federated_local_epochs": 10 ,
+            "number_of_clusters" : 5,
+            "output": "clientquantityskew", 
+            "heterogeneity": "quantity_skew"
         }
     ]
 }

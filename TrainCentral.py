@@ -42,6 +42,7 @@ for exp_id, experiment in enumerate(experiments):
         cfl_after_cluster_rounds = config['cfl_after_cluster_rounds']
         cfl_local_epochs = config['cfl_local_epochs']
         output = config['output']
+        heterogeneity = config['heterogeneity']
         
         print(config)  # Print current configuration
         

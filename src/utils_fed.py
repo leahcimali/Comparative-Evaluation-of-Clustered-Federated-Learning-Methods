@@ -276,9 +276,11 @@ def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clust
         print('Aggregating local models with FedAVG !')
         fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))
+    '''
+    if need of saving models 
     for cluster_id in range(4): 
         torch.save(my_server.clusters_models[cluster_id].state_dict(), 'model_{}.pth'.format(cluster_id))
-        
+    '''    
 def calculate_cluster_id(my_server,client_list, number_of_clusters=4):
     from src.models import MnistNN, SimpleLinear
     from src.utils_training import loss_calculation
@@ -293,39 +295,9 @@ def calculate_cluster_id(my_server,client_list, number_of_clusters=4):
         client.cluster_id = index_of_min_loss
     listofcluster = [client.cluster_id for client in client_list]
     return listofcluster
-'''
-def client_fedavg(my_server, client_list):
-    """
-    Implementation of the FedAvg Algorithm with cluster-based averaging.
-    """
-    for cluster_id in range(my_server.num_clusters):
-        print('FedAVG on cluster {}!'.format(cluster_id))
-        # Filter clients belonging to the current cluster
-        cluster_client_list = [client for client in client_list if client.cluster_id == cluster_id]
-        print('Number of clients in cluster {}: {}'.format(cluster_id, len(cluster_client_list)))
-        
-        # Initialize a dictionary to store parameter sums
-        param_sums = {name: torch.zeros_like(param.data) for name, param in cluster_client_list[0].model.named_parameters()}
-        
-        # Sum up parameters from all clients
-        total_clients = len(cluster_client_list)
-        for client in cluster_client_list:
-            for name, param in client.model.named_parameters():
-                param_sums[name] += param.data
-        
-        # Average parameters
-        averaged_params = {name: param_sum / total_clients for name, param_sum in param_sums.items()}
-        
-        # Create a new model and load averaged parameters
-        new_model = copy.deepcopy(cluster_client_list[0].model)  # Assuming all models have the same architecture
-        for name, param in new_model.named_parameters():
-            param.data = averaged_params[name]
-        
-        # Store the new model in the server's cluster models
-        my_server.clusters_models[cluster_id] = new_model
-'''
-            
+
 def init_server_cluster(my_server,client_list, number_of_clusters=4, seed = 42):
+    # Set client to random cluster for first round
     from src.models import MnistNN, SimpleLinear
     from src.utils_training import loss_calculation
     import numpy as np
@@ -333,7 +305,9 @@ def init_server_cluster(my_server,client_list, number_of_clusters=4, seed = 42):
     torch.manual_seed(seed)
     my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(number_of_clusters)} 
     for client in client_list:
-        #print('Calculating all cluster model loss on local data for client {} !'.format(client.id))
+        client.cluster_id = np.random.randint(0,number_of_clusters)
+        
+    '''
         cluster_losses = []
         for cluster_id in range(number_of_clusters):
             cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
@@ -351,6 +325,7 @@ def init_server_cluster(my_server,client_list, number_of_clusters=4, seed = 42):
             my_server.clusters_models[cluster_id] = SimpleLinear(200)
             listofcluster = calculate_cluster_id(my_server,client_list, number_of_clusters=4)
             print('update', listofcluster)
+    '''
             
 def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
     from src.utils_training import loss_calculation
@@ -365,20 +340,7 @@ def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
         print('Best loss with cluster model {}'.format(index_of_min_loss))
         client.model = copy.deepcopy(my_server.clusters_models[index_of_min_loss])
         client.cluster_id = index_of_min_loss
-'''     
-def client_side_clustering(my_server,client_list,number_of_clusters=4,epochs=10): 
-    import numpy as np
-    from src.utils_training import loss_calculation
-    for client in client_list:
-        print('Training all cluster model on local data for client {} !'.format(client.id))
-        model_and_loss = [train_model(copy.deepcopy(my_server.clusters_models[cluster_id]), client.data_loader['train'], client.data_loader['test'],epochs, learning_rate=0.001) for cluster_id in range(4)]
-        losses = [loss_calculation(model, client.data_loader['train']) for model, _ in model_and_loss]
-        index_of_min_loss = np.argmin(losses)
-        print('Best loss with cluster model {}'.format( index_of_min_loss))
-        clientmodel, _ = model_and_loss[index_of_min_loss]
-        client.model = copy.deepcopy(clientmodel)
-        client.cluster_id = index_of_min_loss 
-'''
+
         
 def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, number_of_clusters = 4,lr = 0.001,initcluster = True):
     """

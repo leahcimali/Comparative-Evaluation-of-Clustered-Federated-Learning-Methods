@@ -60,3 +60,9 @@ serverseed82samples70.txt
 serverseed82samples80.txt
 serverseed82samples90.txt
 serverseed82samples100.txt
+clientquantityskew.txt
+clientrotation.txt
+clientswap.txt
+quantityskew.txt
+rotation.txt
+swap.txt

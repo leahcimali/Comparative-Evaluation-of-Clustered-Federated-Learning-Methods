@@ -68,7 +68,7 @@ def rotate_images(client,rotation):
         for img in images:
             rotated_img = np.rot90(img, k=rotation//90)  # Rotate image by specified angle
             rotated_images.append(rotated_img)   
-            client.data['x'] = rotated_images
+        client.data['x'] = np.array(rotated_images)
 
 def data_preparation(client):
     from sklearn.model_selection import train_test_split
@@ -130,14 +130,14 @@ def setup_experiment_labelswap(number_of_clients,number_of_samples_by_clients, m
             data_preparation(client)
     return my_server, clientlist
 
-def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[1,0.5,0.1,0.05,0.01], seed = 42):
+def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[1,0.5,0.25,0.1,0.05], seed = 42):
     number_of_skew = len(skewlist)
-    number_of_client_by_skew = number_of_client // number_of_skew 
-    clientdata = [data_distribution(number_of_client_by_skew,number_of_max_samples*skew,seed) for skew in skewlist]        
+    number_of_client_by_skew = number_of_client//number_of_skew 
+    clientdata = [data_distribution(number_of_client_by_skew,int(number_of_max_samples*skew),seed) for skew in skewlist]        
     clientlist = []
     for id in range(number_of_client_by_skew):
         for skew_id in range(len(skewlist)):
-            client = Client(id*range(len(skewlist))+ skew_id,clientdata[skew_id][id])
+            client = Client(id*len(skewlist)+ skew_id,clientdata[skew_id][id])
             setattr(client,'quantity_skew',skewlist[skew_id])
             clientlist.append(client)
     for client in clientlist : 
