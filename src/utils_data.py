@@ -60,19 +60,19 @@ def data_distribution(number_of_clients, samples_by_client_of_each_labels,seed =
         client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
     return client_dataset
 
-def rotate_images(images, angle):
-    rotated_images = []
-    for img in images:
-        rotated_img = np.rot90(img, k=angle//90)  # Rotate image by specified angle
-        rotated_images.append(rotated_img)
-    return np.array(rotated_images)
+def rotate_images(client,rotation):
+    images = client.data['x']
+    setattr(client,'rotation',rotation)
+    if rotation >0 :
+        rotated_images = []
+        for img in images:
+            rotated_img = np.rot90(img, k=rotation//90)  # Rotate image by specified angle
+            rotated_images.append(rotated_img)   
+            client.data['x'] = rotated_images
 
-def data_preparation(client,rotation=0):
+def data_preparation(client):
     from sklearn.model_selection import train_test_split
     from torch.utils.data import DataLoader, Dataset,TensorDataset
-
-    if rotation > 0 :
-        client.data['x'] = rotate_images(client.data['x'],rotation)
     x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=42,stratify=client.data['y'])
     x_train, x_test = x_train/255.0 , x_test/255.0
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
@@ -85,7 +85,7 @@ def data_preparation(client,rotation=0):
     test_loader = DataLoader(test_dataset, batch_size=32)
     setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
-    setattr(client,'rotation',rotation)
+    
 
 def setup_experiment_rotation(number_of_clients,number_of_samples_by_clients, model,number_of_cluster=1,seed =42) :
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
@@ -100,9 +100,51 @@ def setup_experiment_rotation(number_of_clients,number_of_samples_by_clients, mo
         end_index = (i + 1) * n
         clientlistrotated = clientlist[start_index:end_index]
         for client in clientlistrotated:
-            data_preparation(client,90*i)
+            rotate_images(client,90*i)
+            data_preparation(client)
     return my_server, clientlist
 
+def label_swap(labels, client):
+    # labels : tuple of labels to swap
+    newlabellist = client.data['y'] 
+    otherlabelindex = newlabellist==labels[1]
+    newlabellist[newlabellist==labels[0]]=labels[1]
+    newlabellist[otherlabelindex] = labels[0]
+    client.data['y']= newlabellist
+    setattr(client,'label_swap', labels)
+    
+def setup_experiment_labelswap(number_of_clients,number_of_samples_by_clients, model,swaplist=[(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)],number_of_cluster=1,seed =42):
+    clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
+    clientlist = []
+    for id in range(number_of_clients):
+        clientlist.append(Client(id,clientdata[id]))
+    my_server = Server(model)
+    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
+    n = number_of_clients // len(swaplist)
+    for i in range(6):
+        start_index = i * n
+        end_index = (i + 1) * n
+        clientlistswap = clientlist[start_index:end_index]
+        for client in clientlistswap:
+            label_swap(swaplist[i],client)
+            data_preparation(client)
+    return my_server, clientlist
+
+def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[1,0.5,0.1,0.05,0.01], seed = 42):
+    number_of_skew = len(skewlist)
+    number_of_client_by_skew = number_of_client // number_of_skew 
+    clientdata = [data_distribution(number_of_client_by_skew,number_of_max_samples*skew,seed) for skew in skewlist]        
+    clientlist = []
+    for id in range(number_of_client_by_skew):
+        for skew_id in range(len(skewlist)):
+            client = Client(id*range(len(skewlist))+ skew_id,clientdata[skew_id][id])
+            setattr(client,'quantity_skew',skewlist[skew_id])
+            clientlist.append(client)
+    for client in clientlist : 
+        data_preparation(client)
+    my_server = Server(model)
+    return my_server, clientlist
+    
 def centralize_data(clientlist):
     from torch.utils.data import DataLoader,Dataset,TensorDataset
     x_train = np.concatenate([clientlist[id].train_test['x_train'] for id in range(len(clientlist))],axis = 0)
