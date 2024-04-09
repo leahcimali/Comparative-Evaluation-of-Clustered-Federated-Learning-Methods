@@ -41,7 +41,8 @@ for exp_id, experiment in enumerate(experiments):
         number_of_clusters = config['number_of_clusters']
         output = config['output']
         heterogeneity = config["heterogeneity"]
-        
+        config['type'] = 'server_side'
+
         print(config)  # Print current configuration
         
         # Your experiment code here...
@@ -64,13 +65,6 @@ for exp_id, experiment in enumerate(experiments):
         
     fed_training_plan_on_shot_k_means(my_server,client_list, cfl_before_cluster_rounds , cfl_after_cluster_rounds , cfl_local_epochs,lr= lr, number_of_clusters=number_of_clusters)
     
-    with open("./{}.txt".format(output), 'w') as f:
+    with open("./results/{}.txt".format(output), 'w') as f:
         with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):    
-            print('server num clusters : ', my_server.num_clusters)
-            for cluster_id in range(number_of_clusters):
-                client_list_cluster = [client for client in client_list if client.cluster_id == cluster_id]
-                _, test_loader = centralize_data(client_list_cluster)
-                print('Federated Model Accuracy for cluster', cluster_id)
-                print("Accuracy: {:.2f}%".format(test_model(my_server.clusters_models[cluster_id], test_loader)*100))
-            print(config)
-            #report_CFL(my_server,client_list)
+            report_CFL(my_server,client_list,config)

@@ -4,6 +4,7 @@
             "seed": 42,
             "number_of_clients": 48,
             "number_of_samples_of_each_labels_by_clients": 10,
+            "number_of_clusters" : 4,
             "centralized_model_epochs": 100,
             "federated_rounds": 50,
             "federated_local_epochs": 10,

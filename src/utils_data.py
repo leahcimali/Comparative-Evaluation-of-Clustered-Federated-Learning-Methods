@@ -62,7 +62,7 @@ def data_distribution(number_of_clients, samples_by_client_of_each_labels,seed =
 
 def rotate_images(client,rotation):
     images = client.data['x']
-    setattr(client,'rotation',rotation)
+    setattr(client,'heterogeneity',str(rotation))
     if rotation >0 :
         rotated_images = []
         for img in images:
@@ -112,7 +112,7 @@ def label_swap(labels, client):
     newlabellist[newlabellist==labels[0]]=labels[1]
     newlabellist[otherlabelindex] = labels[0]
     client.data['y']= newlabellist
-    setattr(client,'label_swap', labels)
+    setattr(client,'heterogeneity', str(labels))
     
 def setup_experiment_labelswap(number_of_clients,number_of_samples_by_clients, model,swaplist=[(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)],number_of_cluster=1,seed =42):
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
@@ -122,7 +122,7 @@ def setup_experiment_labelswap(number_of_clients,number_of_samples_by_clients, m
     my_server = Server(model)
     # Apply rotation 0,90,180 and 270 to 1/4 of clients each
     n = number_of_clients // len(swaplist)
-    for i in range(6):
+    for i in range(number_of_cluster):
         start_index = i * n
         end_index = (i + 1) * n
         clientlistswap = clientlist[start_index:end_index]
@@ -140,7 +140,7 @@ def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samp
     for id in range(number_of_client_by_skew):
         for skew_id in range(len(skewlist)):
             client = Client(id*len(skewlist)+ skew_id,clientdata[skew_id][id])
-            setattr(client,'quantity_skew',skewlist[skew_id])
+            setattr(client,'heterogeneity',str(skewlist[skew_id]))
             clientlist.append(client)
     for client in clientlist : 
         data_preparation(client)
@@ -193,6 +193,8 @@ def unbalancing(client,labels_list ,ratio_list, plot = False):
     ### unflatten the images 
     client.data['x'] = X_resampled.to_numpy().reshape(-1,28,28)
     client.data['y'] = y_resampled
+    setattr(client,'heterogeneity',str((labels_list,ratio_list)))
+
 
 def setup_experiment_labels_skew(model,number_of_clients=48,number_of_samples_by_clients=50,skewlist=[[1,2],[3,4],[5,6],[7,8],[9,0]], ratiolist = [[0.5,0.5],[0.4,0.4],[0.3,0.3],[0.2,0.2],[0.1,0.1]],seed = 42):
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)

@@ -1,0 +1,68 @@
+Number of clusters :  5
+AVG intra cluster dist :  0.5330994039879784
+Intracluster dist variance :  0.03368419307024346
+Duhn index :  3.6216536580559033
+davies_bouldin_index :  0.13558908895114602
+silhouette_scores :  0.8252351802361928
+For cluster  0  : 
+Number of cluster members :  1
+Cluster accuracy :  92.5
+Cluster accuracy std :  0.0
+Cluster heterogeneity :  0.4  , Quantity : 2
+Cluster heterogeneity :  3.0  , Quantity : 1
+Cluster heterogeneity :  4.0  , Quantity : 1
+For cluster  1  : 
+Number of cluster members :  3
+Cluster accuracy :  88.01564722617354
+Cluster accuracy std :  3.040211246063965
+Cluster heterogeneity :  0.0  , Quantity : 1
+Cluster heterogeneity :  0.1  , Quantity : 2
+Cluster heterogeneity :  0.2  , Quantity : 4
+Cluster heterogeneity :  7.0  , Quantity : 2
+Cluster heterogeneity :  8.0  , Quantity : 2
+Cluster heterogeneity :  9.0  , Quantity : 1
+For cluster  2  : 
+Number of cluster members :  1
+Cluster accuracy :  89.74358974358975
+Cluster accuracy std :  0.0
+Cluster heterogeneity :  0.3  , Quantity : 2
+Cluster heterogeneity :  5.0  , Quantity : 1
+Cluster heterogeneity :  6.0  , Quantity : 1
+For cluster  3  : 
+Number of cluster members :  18
+Cluster accuracy :  91.34686258833432
+Cluster accuracy std :  2.569588792335556
+Cluster heterogeneity :  0.0  , Quantity : 6
+Cluster heterogeneity :  0.1  , Quantity : 12
+Cluster heterogeneity :  0.2  , Quantity : 4
+Cluster heterogeneity :  0.3  , Quantity : 6
+Cluster heterogeneity :  0.4  , Quantity : 4
+Cluster heterogeneity :  0.5  , Quantity : 10
+Cluster heterogeneity :  1.0  , Quantity : 5
+Cluster heterogeneity :  2.0  , Quantity : 5
+Cluster heterogeneity :  3.0  , Quantity : 2
+Cluster heterogeneity :  4.0  , Quantity : 2
+Cluster heterogeneity :  5.0  , Quantity : 3
+Cluster heterogeneity :  6.0  , Quantity : 3
+Cluster heterogeneity :  7.0  , Quantity : 2
+Cluster heterogeneity :  8.0  , Quantity : 2
+Cluster heterogeneity :  9.0  , Quantity : 6
+For cluster  4  : 
+Number of cluster members :  27
+Cluster accuracy :  92.44446425732977
+Cluster accuracy std :  2.8335430754651556
+Cluster heterogeneity :  0.0  , Quantity : 3
+Cluster heterogeneity :  0.1  , Quantity : 6
+Cluster heterogeneity :  0.2  , Quantity : 12
+Cluster heterogeneity :  0.3  , Quantity : 12
+Cluster heterogeneity :  0.4  , Quantity : 14
+Cluster heterogeneity :  0.5  , Quantity : 10
+Cluster heterogeneity :  1.0  , Quantity : 5
+Cluster heterogeneity :  2.0  , Quantity : 5
+Cluster heterogeneity :  3.0  , Quantity : 7
+Cluster heterogeneity :  4.0  , Quantity : 7
+Cluster heterogeneity :  5.0  , Quantity : 6
+Cluster heterogeneity :  6.0  , Quantity : 6
+Cluster heterogeneity :  7.0  , Quantity : 6
+Cluster heterogeneity :  8.0  , Quantity : 6
+Cluster heterogeneity :  9.0  , Quantity : 3

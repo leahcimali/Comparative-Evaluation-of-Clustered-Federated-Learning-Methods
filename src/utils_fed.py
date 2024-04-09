@@ -307,25 +307,6 @@ def init_server_cluster(my_server,client_list, number_of_clusters=4, seed = 42):
     for client in client_list:
         client.cluster_id = np.random.randint(0,number_of_clusters)
         
-    '''
-        cluster_losses = []
-        for cluster_id in range(number_of_clusters):
-            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
-            cluster_losses.append(cluster_loss)
-        index_of_min_loss = np.argmin(cluster_losses)
-        client.cluster_id = index_of_min_loss
-    listofcluster = [client.cluster_id for client in client_list]
-    # testing if all cluster are choosen
-    for cluster_id in range(number_of_clusters):
-        while cluster_id not in listofcluster :
-            print(listofcluster)
-            print('restarting cluster centroid for cluster_id {}'.format(cluster_id))
-            new_seed = np.random.randint(0,1000000)   
-            torch.manual_seed(new_seed)
-            my_server.clusters_models[cluster_id] = SimpleLinear(200)
-            listofcluster = calculate_cluster_id(my_server,client_list, number_of_clusters=4)
-            print('update', listofcluster)
-    '''
             
 def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
     from src.utils_training import loss_calculation

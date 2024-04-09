@@ -39,7 +39,7 @@ for exp_id, experiment in enumerate(experiments):
         epochs = config['federated_local_epochs']
         output = config['output']
         heterogeneity = config["heterogeneity"]
-
+        config['type'] = 'client_side'
 
         print(config)  # Print current configuration
         
@@ -67,14 +67,8 @@ for exp_id, experiment in enumerate(experiments):
     else : 
         print('Error no heterogeneity type defined')
     print(heterogeneity)
-    for client in client_list:
-        print(client.data['x'].shape)          
     fed_training_plan_client_side(my_server,client_list, rounds ,epochs,number_of_clusters=number_of_clusters,lr=lr,initcluster=True)
-    with open("./{}.txt".format(output), 'w') as f:
+    
+    with open("./results/{}.txt".format(output), 'w') as f:
         with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
-            print('server num clusters : ', my_server.num_clusters)
-            for cluster_id in range(number_of_clients):
-                client_list_cluster = [client for client in client_list if client.cluster_id == cluster_id]
-                print('Federated Model Accuracy for cluster', cluster_id)
-            print(config)
-            report_CFL(my_server,client_list)
+            report_CFL(my_server,client_list,config)

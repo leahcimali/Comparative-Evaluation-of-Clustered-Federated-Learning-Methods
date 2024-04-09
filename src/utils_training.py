@@ -120,5 +120,4 @@ def test_model(model, test_loader):
     accuracy = correct / total
 
     # Print the test loss and accuracy
-    print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {accuracy:.2%}')
     return accuracy
