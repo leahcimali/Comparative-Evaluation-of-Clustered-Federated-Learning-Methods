@@ -365,6 +365,7 @@ def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, num
 
     """
     from src.utils_training import train_model
+    import numpy as np
     if initcluster == True : 
         init_server_cluster(my_server,client_list, number_of_clusters=number_of_clusters, seed = 42)
     for round in range(0, rounds):
@@ -376,4 +377,5 @@ def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, num
         print('Aggregating local models with FedAVG !')
         fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))
-        
+    
+    
