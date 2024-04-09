@@ -1,6 +1,15 @@
 {
-    "experiments": [
-        
+    "experiments": [  {
+        "seed": 42,
+        "number_of_clients": 50,
+        "number_of_samples_of_each_labels_by_clients": 30,
+        "federated_rounds": 50,
+        "federated_local_epochs": 10,
+        "number_of_clusters" : 5,
+        "output": "clientlabelskew", 
+        "heterogeneity": "labels_distribution_skew"
+    }
+    ,    
         {
             "seed": 42,
             "number_of_clients": 48,

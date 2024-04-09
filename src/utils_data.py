@@ -102,6 +102,7 @@ def setup_experiment_rotation(number_of_clients,number_of_samples_by_clients, mo
         for client in clientlistrotated:
             rotate_images(client,90*i)
             data_preparation(client)
+        clientlist[start_index:end_index] = clientlistrotated
     return my_server, clientlist
 
 def label_swap(labels, client):
@@ -128,6 +129,7 @@ def setup_experiment_labelswap(number_of_clients,number_of_samples_by_clients, m
         for client in clientlistswap:
             label_swap(swaplist[i],client)
             data_preparation(client)
+        clientlist[start_index:end_index] = clientlistswap
     return my_server, clientlist
 
 def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[1,0.5,0.25,0.1,0.05], seed = 42):
@@ -161,4 +163,52 @@ def centralize_data(clientlist):
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
     test_loader = DataLoader(test_dataset, batch_size=64)
     return train_loader, test_loader
+
+from collections import Counter
+import pandas as pd
+import numpy as np
+from imblearn.datasets import make_imbalance
+import matplotlib.pyplot as plt
+
+def ratio_func(y, multiplier, minority_class):
+    target_stats = Counter(y)
+    return {minority_class: int(multiplier * target_stats[minority_class])}
+
+def unbalancing(client,labels_list ,ratio_list, plot = False):
+    from imblearn.datasets import make_imbalance
+    x_train = client.data['x']
+    y_train = client.data['y']
+    X_resampled = x_train.reshape(-1, 784) # flatten the images 
+    y_resampled = y_train
+    for i in range(len(labels_list)):
+        X = pd.DataFrame(X_resampled)
+        X_resampled, y_resampled = make_imbalance(X,
+                y_resampled,
+                sampling_strategy=ratio_func,
+                **{"multiplier": ratio_list[i], "minority_class": labels_list[i]})
+    if plot == True : 
+        plt.hist(y_resampled, bins=np.arange(min(y), 11), align='left', rwidth=1)
+        plt.title("Ratio ")
+        plt.show()
+    ### unflatten the images 
+    client.data['x'] = X_resampled.to_numpy().reshape(-1,28,28)
+    client.data['y'] = y_resampled
+
+def setup_experiment_labels_skew(model,number_of_clients=48,number_of_samples_by_clients=50,skewlist=[[1,2],[3,4],[5,6],[7,8],[9,0]], ratiolist = [[0.5,0.5],[0.4,0.4],[0.3,0.3],[0.2,0.2],[0.1,0.1]],seed = 42):
+    clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
+    clientlist = []
+    for id in range(number_of_clients):
+        clientlist.append(Client(id,clientdata[id]))
+    my_server = Server(model)
+    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
+    n = number_of_clients // len(skewlist)
+    for i in range(len(skewlist)):
+        start_index = i * n
+        end_index = (i + 1) * n
+        clientlistskew = clientlist[start_index:end_index]
+        for client in clientlistskew:
+            unbalancing(client,skewlist[i],ratiolist[i])
+            data_preparation(client)
+        clientlist[start_index:end_index] = clientlistskew
+    return my_server, clientlist
 
