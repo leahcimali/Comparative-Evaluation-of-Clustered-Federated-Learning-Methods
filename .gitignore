@@ -69,3 +69,5 @@ swap.txt
 clientlabelskew.txt
 Results.ipynb
 dataset/*
+results/* 
+src/__pycache__/*
