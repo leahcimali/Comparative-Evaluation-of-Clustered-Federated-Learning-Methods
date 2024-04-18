@@ -214,3 +214,119 @@ def setup_experiment_labels_skew(model,number_of_clients=48,number_of_samples_by
         clientlist[start_index:end_index] = clientlistskew
     return my_server, clientlist
 
+def load_users_data(directory, number_of_users, seed = 42):
+    import os
+    import json
+    import random
+    import numpy as np
+    """
+    Loads n = number_of_users random JSON users_datas from the specified directory.
+
+    Parameters
+    ----------
+    directory : str
+        The directory path where JSON users_datas are located.
+    seed : int
+        A random seed to ensure reproducibility of random selection.
+    number_of_users : int
+        The number of JSON files to load randomly. Correspond to the number of users
+
+    Returns
+    -------
+    users_data : list
+        A list containing the JSON data loaded from the randomly selected files.
+    Each element of the list is a user with its own sample. 
+    It is a dictionnary of the form : 
+    #{'users':[], 'num_samples':{['user_data : val]: }, 'user_data':[json_data['users'][0] : {'x': features, 'y': labels}]} 
+    """
+    
+    # Set the random seed
+    random.seed(seed)
+    
+    # Get a list of JSON files in the directory
+    json_files = [filename for filename in os.listdir(directory) if filename.endswith('.json')]
+    
+    # Sample n files without replacement
+    selected_files = random.sample(json_files, min(number_of_users, len(json_files)))
+    
+    # Load the selected JSON files into a list
+    users_data = []
+    for filename in selected_files:
+        filepath = os.path.join(directory, filename)
+        with open(filepath, 'r') as file:
+            json_data = json.load(file)
+            users_data.append(json_data)
+    
+    return users_data
+
+def create_user_data_distribution(user,number_of_clients ,samples_by_client_of_each_labels, seed = 42):
+    user_id = user['users'][0]
+    features = np.array(user['user_data'][user_id]['x'])*255
+    features = features.reshape(-1,28,28)
+    print(features.shape)
+    import matplotlib.pyplot as plt
+    targets = np.array(user['user_data'][user_id]['y'])
+
+    label_dict = {}
+    for label in range(10):
+        label_indices = np.where(targets == label)[0]
+        label_samples_x = features[label_indices]
+        # Dictionnary that contains all samples of the labels to associate key 
+        label_dict[label] = shuffle(label_samples_x, seed)
+        '''for i in range(5):
+            digit_image = label_dict[label][i]
+            plt.imshow(digit_image, cmap='gray')
+            plt.title(f'MNIST Digit: {label}')  # Add the label as the title
+            plt.axis('off')  # Turn off axis
+            plt.show()
+    '''                
+    clients_dictionary = {}
+    client_dataset = {}
+    for client in range(number_of_clients):
+        clients_dictionary[client] = {}    
+        for label in range(10):
+            clients_dictionary[client][label]= label_dict[label][client*samples_by_client_of_each_labels:(client+1)*samples_by_client_of_each_labels]
+    for client in range(number_of_clients):
+        client_dataset[client] = {}    
+        client_dataset[client]['x'] = np.concatenate([clients_dictionary[client][label] for label in range(10)], axis=0)
+        client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
+    return client_dataset, user_id  
+def setup_experiment_features_skew(model,number_of_clients, number_of_users,number_of_samples_by_clients,seed = 42):
+    """
+    Sets up an experiment with concept shift features.
+
+    Parameters
+    ----------
+    model : Model
+        The model used for the experiment.
+    number_of_clients : int
+        The total number of clients in the experiment.
+    number_of_users : int
+        The number of users involved in the experiment.
+    number_of_samples_by_clients : int
+        The number of samples per client.
+    seed : int, optional
+        Random seed for reproducibility. Default is 42.
+
+    Returns
+    -------
+    clientlist : list
+        A list of Client objects, each representing a client in the experiment.
+    my_server : Server
+        The server object used in the experiment.
+    """
+    
+    file_path = './dataset/data/sampled_data/'
+    users_data = load_users_data(file_path,number_of_users=number_of_users, seed=seed)
+    number_of_clients_by_users = number_of_clients // number_of_users
+    clientlist = []
+    for user in range(number_of_users):
+        clientdata, user_id = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, seed =seed)
+        for id in range(number_of_clients_by_users):
+            client = Client(id+ user*number_of_clients_by_users,clientdata[id])
+            setattr(client,'heterogeneity',str(user_id))
+            clientlist.append(client)
+    for client in clientlist : 
+        data_preparation(client)
+    my_server = Server(model)
+    return my_server, clientlist

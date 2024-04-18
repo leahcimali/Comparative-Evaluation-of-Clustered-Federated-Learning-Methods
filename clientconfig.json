@@ -2,13 +2,13 @@
     "experiments": [  
         {
             "seed": 42,
-            "number_of_clients": 12,
+            "number_of_clients": 20,
             "number_of_samples_of_each_labels_by_clients": 10,
             "federated_rounds": 50,
             "federated_local_epochs": 10,
-            "number_of_clusters" : 4,
-            "output": "clientrotation", 
-            "heterogeneity": "concept_shift_on_features"
+            "number_of_clusters" : 5,
+            "output": "feature_skew_client", 
+            "heterogeneity": "features_distribution_skew"
         }
 ,{
         "seed": 42,

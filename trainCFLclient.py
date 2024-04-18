@@ -13,7 +13,7 @@ print(torch.__version__)
 import src.config
 from src.models import MnistNN, SimpleLinear
 from src.fedclass import Client, Server
-from src.utils_data import setup_experiment_rotation, setup_experiment_labelswap, setup_experiment_quantity_skew, setup_experiment_labels_skew
+from src.utils_data import setup_experiment_rotation, setup_experiment_labelswap, setup_experiment_quantity_skew, setup_experiment_labels_skew, setup_experiment_features_skew
 from src.utils_training import train_model, test_model
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,7 +61,7 @@ for exp_id, experiment in enumerate(experiments):
     elif heterogeneity == 'labels_distribution_skew':
         my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)   
     elif heterogeneity == 'features_distribution_skew':
-        pass
+        my_server, client_list = setup_experiment_features_skew(model, number_of_clients, number_of_clusters, number_of_samples_of_each_labels_by_clients, seed)
     elif heterogeneity == 'quantity_skew':
         my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,skewlist=[1, 0.5, 0.25, 0.1, 0.05],seed = seed)
     else : 

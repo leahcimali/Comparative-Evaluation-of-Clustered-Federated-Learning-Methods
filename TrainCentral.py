@@ -8,12 +8,13 @@ import importlib
 import contextlib
 from pathlib import Path
 import torch
+import torch.optim as optim
 
 print(torch.__version__)
 import src.config
 from src.models import MnistNN, SimpleLinear 
 from src.fedclass import Client, Server
-from src.utils_data import setup_experiment_rotation, setup_experiment_labels_skew,setup_experiment_labelswap,setup_experiment_quantity_skew, centralize_data
+from src.utils_data import setup_experiment_rotation, setup_experiment_labels_skew,setup_experiment_labelswap,setup_experiment_quantity_skew, centralize_data, setup_experiment_features_skew
 from src.utils_training import train_model, test_model
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,8 +23,8 @@ import json
 from src.metrics import report_CFL
 
 # Load config from JSON file
-lr = 0.1
-with open('config.json') as config_file:
+lr = 0.001
+with open('centralconfig.json') as config_file:
     config_data = json.load(config_file)
 
 experiments = config_data['experiments']
@@ -37,11 +38,8 @@ for exp_id, experiment in enumerate(experiments):
         number_of_samples_of_each_labels_by_clients = config['number_of_samples_of_each_labels_by_clients']
         centralized_model_epochs = config['centralized_model_epochs']
         federated_rounds = config['federated_rounds']
-        number_of_clusters = config["number_of_clusters"]
         federated_local_epochs = config['federated_local_epochs']
-        cfl_before_cluster_rounds = config['cfl_before_cluster_rounds']
-        cfl_after_cluster_rounds = config['cfl_after_cluster_rounds']
-        cfl_local_epochs = config['cfl_local_epochs']
+        number_of_clusters = config["number_of_clusters"]
         output = config['output']
         heterogeneity = config['heterogeneity']
         config['type'] = 'central'
@@ -57,25 +55,33 @@ for exp_id, experiment in enumerate(experiments):
             model = SimpleLinear()
             if heterogeneity == 'concept_shift_on_features':
                 my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)
-                for rotation in [0,90,180,270]:
+            elif heterogeneity == 'concept_shift_on_labels':
+                my_server, client_list  = setup_experiment_labelswap(number_of_clients,number_of_samples_of_each_labels_by_clients,model,number_of_cluster=number_of_clusters,seed=seed)
+            elif heterogeneity == 'labels_distribution_skew':
+                my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)   
+            elif heterogeneity == 'features_distribution_skew':
+                my_server, client_list = setup_experiment_features_skew(model,number_of_clients,number_of_clusters,number_of_samples_of_each_labels_by_clients,seed=seed)
+            elif heterogeneity == 'quantity_skew':
+                my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,skewlist=[1, 0.5, 0.25, 0.1, 0.05],seed = seed)
+            else : 
+                print('Error no heterogeneity type defined')
+            print(heterogeneity) 
+            print("Centralized results")    
+            centralized_model = SimpleLinear()
+            train_loader, test_loader = centralize_data(client_list)
+            train_model(centralized_model, train_loader, test_loader,centralized_model_epochs,learning_rate= lr)
+            test_central = test_model(centralized_model, test_loader)
+            print('centralized model accuracy')
+            print("Accuracy: {:.2f}%".format(test_central*100))
+    
+    '''
+        for rotation in [0,90,180,270]:
                     rotated_client= [client for client in client_list if client.rotation == rotation] 
                     train_loader, test_loader = centralize_data(rotated_client)
                     personalized_centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs,learning_rate= lr ) 
                     test_central = test_model(personalized_centralized_model, test_loader)
                     print('personalized centralized model Accuracy with rotation ', rotation)
                     print("Accuracy: {:.2f}%".format(test_central*100))
-            elif heterogeneity == 'concept_shift_on_labels':
-                my_server, client_list  = setup_experiment_labelswap(number_of_clients,number_of_samples_of_each_labels_by_clients,model,number_of_cluster=number_of_clusters,seed=seed)
-            elif heterogeneity == 'labels_distribution_skew':
-                my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)   
-            elif heterogeneity == 'features_distribution_skew':
-                pass
-            elif heterogeneity == 'quantity_skew':
-                my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,skewlist=[1, 0.5, 0.25, 0.1, 0.05],seed = seed)
-            else : 
-                print('Error no heterogeneity type defined')
-            print(heterogeneity) 
-              
             for rotation in [0,90,180,270]:
                 rotated_client= [client for client in client_list if client.rotation == rotation] 
                 train_loader, test_loader = centralize_data(rotated_client)
@@ -83,4 +89,4 @@ for exp_id, experiment in enumerate(experiments):
                 test_central = test_model(personalized_centralized_model, test_loader)
                 print('personalized centralized model Accuracy with rotation ', rotation)
                 print("Accuracy: {:.2f}%".format(test_central*100))
-            
+          '''  

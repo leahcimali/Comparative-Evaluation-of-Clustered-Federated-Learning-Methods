@@ -6,9 +6,9 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import copy
 
-def train_model(model, train_loader, test_loader, num_epochs=10,learning_rate = 0.001):
+def train_model(model, train_loader, test_loader, num_epochs=10,learning_rate = 0.001, optimizer = optim.SGD):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate) 
+    optimizer = optimizer(model.parameters(), lr=learning_rate) 
     
     for epoch in range(num_epochs):
         model.train()  # Set the model to training mode

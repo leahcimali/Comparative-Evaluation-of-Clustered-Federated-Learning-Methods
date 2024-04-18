@@ -123,7 +123,7 @@ def report_CFL(my_server, client_list, config, type = 'cluster'):
             with open('./results/{}.json'.format(config['output']), 'w') as json_file:
                 json.dump(config, json_file, indent=4)
     elif type == 'federated':
-        
+        pass
     elif type =='central' : 
         pass
     else :
