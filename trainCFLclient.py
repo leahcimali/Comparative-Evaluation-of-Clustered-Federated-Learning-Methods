@@ -61,7 +61,9 @@ for exp_id, experiment in enumerate(experiments):
     elif heterogeneity == 'labels_distribution_skew':
         my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)   
     elif heterogeneity == 'features_distribution_skew':
-        my_server, client_list = setup_experiment_features_skew(model, number_of_clients, number_of_clusters, number_of_samples_of_each_labels_by_clients, seed)
+        lr = 0.001
+        number_of_users = 9
+        my_server, client_list = setup_experiment_features_skew(model, number_of_clients, number_of_users, number_of_samples_of_each_labels_by_clients, seed)
     elif heterogeneity == 'quantity_skew':
         my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,skewlist=[1, 0.5, 0.25, 0.1, 0.05],seed = seed)
     else : 

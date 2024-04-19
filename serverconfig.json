@@ -1,11 +1,11 @@
 {
     "experiments": [{
         "seed": 42,
-        "number_of_clients":30,
-        "number_of_samples_of_each_labels_by_clients": 10,
+        "number_of_clients":18,
+        "number_of_samples_of_each_labels_by_clients": 30,
         "cfl_before_cluster_rounds": 50,
         "cfl_after_cluster_rounds": 40,
-        "cfl_local_epochs": 30,
+        "cfl_local_epochs": 40,
         "number_of_clusters" : 3,
         "output": "featureskewserver",
         "heterogeneity": "features_distribution_skew"

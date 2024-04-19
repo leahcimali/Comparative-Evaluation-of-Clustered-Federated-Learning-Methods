@@ -128,3 +128,10 @@ def report_CFL(my_server, client_list, config, type = 'cluster'):
         pass
     else :
         print('Error no type ! ')
+
+def plot_mnist(image,label):
+    import matplotlib.pyplot as plt
+    plt.imshow(image, cmap='gray')
+    plt.title(f'MNIST Digit: {label}')  # Add the label as the title
+    plt.axis('off')  # Turn off axis
+    plt.show()

@@ -7,7 +7,7 @@
             "centralized_model_epochs": 200,
             "federated_rounds": 50,
             "federated_local_epochs": 10,
-            "number_of_clusters" :4,
+            "number_of_clusters" :3,
             "output": "serverseed42samples10",
             "heterogeneity" : "features_distribution_skew",
             "type": "central"

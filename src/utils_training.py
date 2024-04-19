@@ -6,13 +6,24 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import copy
 
-def train_model(model, train_loader, test_loader, num_epochs=10,learning_rate = 0.001, optimizer = optim.SGD):
+def lr_schedule(epoch,lr):
+    decay_factor = 0.1
+    if epoch % 10 == 0 and epoch != 0:
+        return lr * decay_factor
+    else:
+        return lr
+def train_model(model, train_loader, test_loader, num_epochs=10, learning_rate=0.001, optimizer=optim.SGD, lr_scheduler=None):
     criterion = nn.CrossEntropyLoss()
     optimizer = optimizer(model.parameters(), lr=learning_rate) 
     
     for epoch in range(num_epochs):
         model.train()  # Set the model to training mode
         running_loss = 0.0
+
+        # Apply learning rate decay if lr_scheduler is provided
+        if lr_scheduler is not None:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr_scheduler(epoch, param_group['lr'])
 
         # Iterate over the training dataset
         for inputs, labels in train_loader:
@@ -45,8 +56,7 @@ def train_model(model, train_loader, test_loader, num_epochs=10,learning_rate = 
         accuracy = correct / total
 
         # Print the loss and accuracy for each epoch
-        #print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')
-    print(f'Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')
+        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')
 
     return model
 

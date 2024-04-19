@@ -153,7 +153,6 @@ def centralize_data(clientlist):
     x_test = np.concatenate([clientlist[id].train_test['x_test'] for id in range(len(clientlist))],axis = 0)
     y_train = np.concatenate([clientlist[id].train_test['y_train'] for id in range(len(clientlist))],axis = 0)
     y_test = np.concatenate([clientlist[id].train_test['y_test'] for id in range(len(clientlist))],axis = 0)
-    print(x_train.shape)
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
@@ -259,11 +258,70 @@ def load_users_data(directory, number_of_users, seed = 42):
     
     return users_data
 
-def create_user_data_distribution(user,number_of_clients ,samples_by_client_of_each_labels, seed = 42):
+def dilate_images(x_train, kernel_size=(3, 3)):
+    import cv2
+    """
+    Perform dilation operation on a batch of images using a given kernel.
+
+    Parameters:
+        x_train (ndarray): Input batch of images (3D array with shape (n, height, width)).
+        kernel_size (tuple): Size of the structuring element/kernel for dilation.
+
+    Returns:
+        ndarray: Dilation results for all images in the batch.
+    """
+    import cv2
+    n = x_train.shape[0]  # Number of images in the batch
+    dilated_images = np.zeros_like(x_train, dtype=np.uint8)
+
+    # Create the kernel for dilation
+    kernel = np.ones(kernel_size, np.uint8)
+
+    # Iterate over each image in the batch
+    for i in range(n):
+        # Perform dilation on the current image
+        dilated_image = cv2.dilate(x_train[i], kernel, iterations=1)
+        # Store the dilated image in the results array
+        dilated_images[i] = dilated_image
+
+    return dilated_images
+
+def erode_images(x_train, kernel_size=(3, 3)):
+    """
+    Perform erosion operation on a batch of images using a given kernel.
+
+    Parameters:
+        x_train (ndarray): Input batch of images (3D array with shape (n, height, width)).
+        kernel_size (tuple): Size of the structuring element/kernel for erosion.
+
+    Returns:
+        ndarray: Erosion results for all images in the batch.
+    """
+    import cv2
+    n = x_train.shape[0]  # Number of images in the batch
+    eroded_images = np.zeros_like(x_train, dtype=np.uint8)
+
+    # Create the kernel for erosion
+    kernel = np.ones(kernel_size, np.uint8)
+
+    # Iterate over each image in the batch
+    for i in range(n):
+        # Perform erosion on the current image
+        eroded_image = cv2.erode(x_train[i], kernel, iterations=1)
+        # Store the eroded image in the results array
+        eroded_images[i] = eroded_image
+
+    return eroded_images
+from src.metrics import plot_mnist
+def create_user_data_distribution(user,number_of_clients ,samples_by_client_of_each_labels, erosion = 0, dilatation =0, seed = 42):
+    '''
+    dilatation : make the writing bolder
+    erosion : make the writing thinner 
+    '''
+    
     user_id = user['users'][0]
     features = np.array(user['user_data'][user_id]['x'])*255
     features = features.reshape(-1,28,28)
-    print(features.shape)
     import matplotlib.pyplot as plt
     targets = np.array(user['user_data'][user_id]['y'])
 
@@ -272,14 +330,7 @@ def create_user_data_distribution(user,number_of_clients ,samples_by_client_of_e
         label_indices = np.where(targets == label)[0]
         label_samples_x = features[label_indices]
         # Dictionnary that contains all samples of the labels to associate key 
-        label_dict[label] = shuffle(label_samples_x, seed)
-        '''for i in range(5):
-            digit_image = label_dict[label][i]
-            plt.imshow(digit_image, cmap='gray')
-            plt.title(f'MNIST Digit: {label}')  # Add the label as the title
-            plt.axis('off')  # Turn off axis
-            plt.show()
-    '''                
+        label_dict[label] = shuffle(label_samples_x, seed)           
     clients_dictionary = {}
     client_dataset = {}
     for client in range(number_of_clients):
@@ -289,8 +340,15 @@ def create_user_data_distribution(user,number_of_clients ,samples_by_client_of_e
     for client in range(number_of_clients):
         client_dataset[client] = {}    
         client_dataset[client]['x'] = np.concatenate([clients_dictionary[client][label] for label in range(10)], axis=0)
+        if erosion >0 :
+            client_dataset[client]['x'] = erode_images(client_dataset[client]['x'], (2, 2))
+        elif dilatation >0 : 
+            client_dataset[client]['x'] = dilate_images(client_dataset[client]['x'], (2,2))
+        else : 
+            pass
         client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
-    return client_dataset, user_id  
+    return client_dataset  
+
 def setup_experiment_features_skew(model,number_of_clients, number_of_users,number_of_samples_by_clients,seed = 42):
     """
     Sets up an experiment with concept shift features.
@@ -321,12 +379,23 @@ def setup_experiment_features_skew(model,number_of_clients, number_of_users,numb
     number_of_clients_by_users = number_of_clients // number_of_users
     clientlist = []
     for user in range(number_of_users):
-        clientdata, user_id = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, seed =seed)
+        if user % 3 == 1: # if user number is odd we will dilate the image with kernel (2,2)
+            clientdata = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, erosion=0, dilatation=1, seed =seed)
+            heterogeneity = f'dilatation'
+        elif user % 3 == 2 : # if user number is 0 don't change anything
+            clientdata = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, seed =seed)
+            heterogeneity = 'None'
+        else : # if user number is odd apply erosion to the image with kernel (2,2)
+            clientdata = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, erosion=1, dilatation=0, seed =seed)
+            heterogeneity = f'erosion'
+
         for id in range(number_of_clients_by_users):
             client = Client(id+ user*number_of_clients_by_users,clientdata[id])
-            setattr(client,'heterogeneity',str(user_id))
+            setattr(client,'heterogeneity',heterogeneity)
             clientlist.append(client)
     for client in clientlist : 
         data_preparation(client)
     my_server = Server(model)
     return my_server, clientlist
+
+
