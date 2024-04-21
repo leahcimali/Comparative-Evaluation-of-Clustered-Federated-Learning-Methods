@@ -1,56 +1,16 @@
 {
     "experiments": [  
         {
-            "seed": 42,
-            "number_of_clients": 20,
-            "number_of_samples_of_each_labels_by_clients": 10,
+            "seed": 102,
+            "number_of_clients": 36,
+            "number_of_samples_of_each_labels_by_clients": 30,
             "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "number_of_clusters" : 5,
+            "federated_local_epochs": 40,
+            "number_of_clusters" : 3,
             "output": "feature_skew_client", 
             "heterogeneity": "features_distribution_skew"
         }
-,{
-        "seed": 42,
-        "number_of_clients": 50,
-        "number_of_samples_of_each_labels_by_clients": 30,
-        "federated_rounds": 50,
-        "federated_local_epochs": 10,
-        "number_of_clusters" : 5,
-        "output": "clientlabelskew", 
-        "heterogeneity": "labels_distribution_skew"
-    }
-    ,    
-        {
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 10,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "number_of_clusters" : 4,
-            "output": "clientrotation", 
-            "heterogeneity": "concept_shift_on_features"
-        }
-,{
-            "seed": 42,
-            "number_of_clients": 60 ,
-            "number_of_samples_of_each_labels_by_clients": 10 ,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10,
-            "number_of_clusters" : 6,
-            "output": "clientswap", 
-            "heterogeneity": "concept_shift_on_labels"
-        },
-        {
-            "seed": 42,
-            "number_of_clients": 100,
-            "number_of_samples_of_each_labels_by_clients": 200,
-            "federated_rounds": 50,
-            "federated_local_epochs": 10 ,
-            "number_of_clusters" : 5,
-            "output": "clientquantityskew", 
-            "heterogeneity": "quantity_skew"
-        }
+
     ]
 }
         

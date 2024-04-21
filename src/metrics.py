@@ -9,57 +9,74 @@ import numpy as np
 from scipy.spatial import distance
 
 def average_intracluster_distance(X, labels):
-    total_distance = 0
-    count = 0
-    for label in np.unique(labels):
-        cluster_points = X[labels == label]
-        if len(cluster_points) > 1:
-            total_distance += np.mean(pairwise_distances(cluster_points))
-            count += 1
-    return total_distance / count
-
+    try:
+        total_distance = 0
+        count = 0
+        for label in np.unique(labels):
+            cluster_points = X[labels == label]
+            if len(cluster_points) > 1:
+                total_distance += np.mean(pairwise_distances(cluster_points))
+                count += 1
+        if count == 0:
+            return None  # No valid clusters found
+        return total_distance / count
+    except ValueError:
+        return None  # Catching ValueError
+        
 def intracluster_distance_variance(X, labels):
-    distances = []
-    for label in np.unique(labels):
-        cluster_points = X[labels == label]
-        if len(cluster_points) > 1:
-            distances.extend(pairwise_distances(cluster_points).flatten())
-    return np.var(distances)
-
+    try:
+        distances = []
+        for label in np.unique(labels):
+            cluster_points = X[labels == label]
+            if len(cluster_points) > 1:
+                distances.extend(pairwise_distances(cluster_points).flatten())
+        return np.var(distances)
+    except ValueError:
+        return None
+    
 def dunn_index(X, labels):
-    min_intercluster_distance = np.inf
-    max_intracluster_distance = -np.inf
-    for label1 in np.unique(labels):
-        for label2 in np.unique(labels):
-            if label1 != label2:
-                intercluster_distance = np.min(pairwise_distances(X[labels == label1], X[labels == label2]))
-                min_intercluster_distance = min(min_intercluster_distance, intercluster_distance)
-        max_intracluster_distance = max(max_intracluster_distance, np.max(pairwise_distances(X[labels == label1])))
-    return min_intercluster_distance / max_intracluster_distance
-
+    try:
+        min_intercluster_distance = np.inf
+        max_intracluster_distance = -np.inf
+        for label1 in np.unique(labels):
+            for label2 in np.unique(labels):
+                if label1 != label2:
+                    intercluster_distance = np.min(pairwise_distances(X[labels == label1], X[labels == label2]))
+                    min_intercluster_distance = min(min_intercluster_distance, intercluster_distance)
+            max_intracluster_distance = max(max_intracluster_distance, np.max(pairwise_distances(X[labels == label1])))
+        return min_intercluster_distance / max_intracluster_distance
+    except ValueError:
+        return None
+    
 def davies_bouldin_index(X, labels):
-    k = len(np.unique(labels))
-    centroids = [np.mean(X[labels == label], axis=0) for label in np.unique(labels)]
-    average_distances = np.zeros(k)
-    for i in range(k):
-        intracluster_distances = pairwise_distances(X[labels == i], [centroids[i]])
-        average_distances[i] = np.mean(intracluster_distances)
-    db_index = 0
-    for i in range(k):
-        max_similarity = -np.inf
-        for j in range(k):
-            if i != j:
-                similarity = (average_distances[i] + average_distances[j]) / distance.euclidean(centroids[i], centroids[j])
-                max_similarity = max(max_similarity, similarity)
-        db_index += max_similarity
-    return db_index / k
+    try:
+        k = len(np.unique(labels))
+        centroids = [np.mean(X[labels == label], axis=0) for label in np.unique(labels)]
+        average_distances = np.zeros(k)
+        for i in range(k):
+            intracluster_distances = pairwise_distances(X[labels == i], [centroids[i]])
+            average_distances[i] = np.mean(intracluster_distances)
+        db_index = 0
+        for i in range(k):
+            max_similarity = -np.inf
+            for j in range(k):
+                if i != j:
+                    similarity = (average_distances[i] + average_distances[j]) / distance.euclidean(centroids[i], centroids[j])
+                    max_similarity = max(max_similarity, similarity)
+            db_index += max_similarity
+        return db_index / k
+    except ValueError:
+        return None
 
 def calinski_harabasz_index(X, labels):
-    k = len(np.unique(labels))
-    centroids = [np.mean(X[labels == label], axis=0) for label in np.unique(labels)]
-    within_cluster_dispersion = sum([np.sum((X[labels == i] - centroids[i]) ** 2) for i in range(k)])
-    between_cluster_dispersion = sum([np.sum((centroids[i] - np.mean(X, axis=0)) ** 2) * len(X[labels == i]) for i in range(k)])
-    return between_cluster_dispersion / within_cluster_dispersion * (len(X) - k) / (k - 1)
+    try:
+        k = len(np.unique(labels))
+        centroids = [np.mean(X[labels == label], axis=0) for label in np.unique(labels)]
+        within_cluster_dispersion = sum([np.sum((X[labels == i] - centroids[i]) ** 2) for i in range(k)])
+        between_cluster_dispersion = sum([np.sum((centroids[i] - np.mean(X, axis=0)) ** 2) * len(X[labels == i]) for i in range(k)])
+        return between_cluster_dispersion / within_cluster_dispersion * (len(X) - k) / (k - 1)
+    except ValueError:
+        return None
 
 # Example usage:
 # Assuming X is your data and labels are cluster labels assigned to each data point
@@ -81,9 +98,11 @@ def report_CFL(my_server, client_list, config, type = 'cluster'):
         cluster_id = pd.DataFrame.from_dict(clusters_identities, orient='index', columns=['cluster_id'])
         X = weight_matrix 
         labels= cluster_id.values
-        
-        silhouette_scores = silhouette_score(X, labels, metric='euclidean')
-        
+        try : 
+            silhouette_scores = silhouette_score(X, labels, metric='euclidean')
+        except ValueError:
+            silhouette_scores = None
+            
         avg_intra_dist = average_intracluster_distance(X, labels)
         intra_dist_var = intracluster_distance_variance(X, labels)
         dunn_idx = dunn_index(X, labels)

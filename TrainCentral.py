@@ -16,14 +16,14 @@ from src.models import MnistNN, SimpleLinear
 from src.fedclass import Client, Server
 from src.utils_data import setup_experiment_rotation, setup_experiment_labels_skew,setup_experiment_labelswap,setup_experiment_quantity_skew, centralize_data, setup_experiment_features_skew
 from src.utils_training import train_model, test_model
+from src.utils_fed import fed_training_plan
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import json
-from src.metrics import report_CFL
 
 # Load config from JSON file
-lr = 0.001
+lr = 0.1
 with open('centralconfig.json') as config_file:
     config_data = json.load(config_file)
 
@@ -43,6 +43,7 @@ for exp_id, experiment in enumerate(experiments):
         output = config['output']
         heterogeneity = config['heterogeneity']
         config['type'] = 'central'
+        results = config
         # Print current configuration
         
         # Your experiment code here...
@@ -60,12 +61,15 @@ for exp_id, experiment in enumerate(experiments):
             elif heterogeneity == 'labels_distribution_skew':
                 my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)   
             elif heterogeneity == 'features_distribution_skew':
-                my_server, client_list = setup_experiment_features_skew(model,number_of_clients,number_of_clusters,number_of_samples_of_each_labels_by_clients,seed=seed)
+                lr = 0.001
+                number_of_users = 9
+                my_server, client_list = setup_experiment_features_skew(model,number_of_clients,number_of_users,number_of_samples_of_each_labels_by_clients,seed=seed)
             elif heterogeneity == 'quantity_skew':
                 my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,skewlist=[1, 0.5, 0.25, 0.1, 0.05],seed = seed)
             else : 
                 print('Error no heterogeneity type defined')
             print(heterogeneity) 
+            # Centralized results
             print("Centralized results")    
             centralized_model = SimpleLinear()
             train_loader, test_loader = centralize_data(client_list)
@@ -73,20 +77,33 @@ for exp_id, experiment in enumerate(experiments):
             test_central = test_model(centralized_model, test_loader)
             print('centralized model accuracy')
             print("Accuracy: {:.2f}%".format(test_central*100))
-    
-    '''
-        for rotation in [0,90,180,270]:
-                    rotated_client= [client for client in client_list if client.rotation == rotation] 
-                    train_loader, test_loader = centralize_data(rotated_client)
-                    personalized_centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs,learning_rate= lr ) 
-                    test_central = test_model(personalized_centralized_model, test_loader)
-                    print('personalized centralized model Accuracy with rotation ', rotation)
-                    print("Accuracy: {:.2f}%".format(test_central*100))
-            for rotation in [0,90,180,270]:
-                rotated_client= [client for client in client_list if client.rotation == rotation] 
-                train_loader, test_loader = centralize_data(rotated_client)
+            results['central'] = test_central*100
+            # Centralized Personalized results
+            heterogeneity_types = set(client.heterogeneity for client in client_list)
+            model = SimpleLinear()
+            for heterogeneity_type in heterogeneity_types :
+                client_of_type = [client for client in client_list if client.heterogeneity == heterogeneity_type]
+                train_loader, test_loader = centralize_data(client_of_type)
                 personalized_centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs,learning_rate= lr ) 
                 test_central = test_model(personalized_centralized_model, test_loader)
-                print('personalized centralized model Accuracy with rotation ', rotation)
+                print('personalized centralized model Accuracy with rotation ', heterogeneity_type)
                 print("Accuracy: {:.2f}%".format(test_central*100))
-          '''  
+                results[f'personalized central ({heterogeneity_type})'] = test_central*100
+
+            # federated
+            fed_training_plan(my_server, client_list,federated_rounds, federated_local_epochs,lr)
+            train_loader, test_loader = centralize_data(client_list)
+            test_federatedmodel = test_model(my_server.model, test_loader)
+            print('Federated model accuracy')
+            print("Accuracy: {:.2f}%".format(test_federatedmodel*100))
+            results['federated'] = test_federatedmodel*100
+            clients_accs =[]
+            for client in client_list : 
+                acc = test_model(my_server.model, client.data_loader['test'])*100
+                clients_accs.append(acc)
+            results['federated std'] = np.std(clients_accs)
+    
+            print(results)
+            
+            with open('./results/{}.json'.format(config['output']), 'w') as json_file:
+                json.dump(results, json_file, indent=4)
