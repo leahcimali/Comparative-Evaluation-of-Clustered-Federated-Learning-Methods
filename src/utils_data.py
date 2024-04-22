@@ -87,7 +87,7 @@ def data_preparation(client):
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
     
 
-def setup_experiment_rotation(number_of_clients,number_of_samples_by_clients, model,number_of_cluster=1,seed =42) :
+def setup_experiment_rotation(model,number_of_clients,number_of_samples_by_clients, seed =42) :
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
     for id in range(number_of_clients):
@@ -114,7 +114,7 @@ def label_swap(labels, client):
     client.data['y']= newlabellist
     setattr(client,'heterogeneity', str(labels))
     
-def setup_experiment_labelswap(number_of_clients,number_of_samples_by_clients, model,swaplist=[(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)],number_of_cluster=1,seed =42):
+def setup_experiment_labelswap(model,number_of_clients,number_of_samples_by_clients, swaplist=[(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)],number_of_cluster=1,seed =42):
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
     for id in range(number_of_clients):
@@ -313,89 +313,31 @@ def erode_images(x_train, kernel_size=(3, 3)):
 
     return eroded_images
 from src.metrics import plot_mnist
-def create_user_data_distribution(user,number_of_clients ,samples_by_client_of_each_labels, erosion = 0, dilatation =0, seed = 42):
-    '''
-    dilatation : make the writing bolder
-    erosion : make the writing thinner 
-    '''
-    
-    user_id = user['users'][0]
-    features = np.array(user['user_data'][user_id]['x'])*255
-    features = features.reshape(-1,28,28)
-    import matplotlib.pyplot as plt
-    targets = np.array(user['user_data'][user_id]['y'])
 
-    label_dict = {}
-    for label in range(10):
-        label_indices = np.where(targets == label)[0]
-        label_samples_x = features[label_indices]
-        # Dictionnary that contains all samples of the labels to associate key 
-        label_dict[label] = shuffle(label_samples_x, seed)           
-    clients_dictionary = {}
-    client_dataset = {}
-    for client in range(number_of_clients):
-        clients_dictionary[client] = {}    
-        for label in range(10):
-            clients_dictionary[client][label]= label_dict[label][client*samples_by_client_of_each_labels:(client+1)*samples_by_client_of_each_labels]
-    for client in range(number_of_clients):
-        client_dataset[client] = {}    
-        client_dataset[client]['x'] = np.concatenate([clients_dictionary[client][label] for label in range(10)], axis=0)
-        if erosion >0 :
-            client_dataset[client]['x'] = erode_images(client_dataset[client]['x'], (2, 2))
-        elif dilatation >0 : 
-            client_dataset[client]['x'] = dilate_images(client_dataset[client]['x'], (2,2))
-        else : 
-            pass
-        client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
-    return client_dataset  
 
-def setup_experiment_features_skew(model,number_of_clients, number_of_users,number_of_samples_by_clients,seed = 42):
-    """
-    Sets up an experiment with concept shift features.
 
-    Parameters
-    ----------
-    model : Model
-        The model used for the experiment.
-    number_of_clients : int
-        The total number of clients in the experiment.
-    number_of_users : int
-        The number of users involved in the experiment.
-    number_of_samples_by_clients : int
-        The number of samples per client.
-    seed : int, optional
-        Random seed for reproducibility. Default is 42.
-
-    Returns
-    -------
-    clientlist : list
-        A list of Client objects, each representing a client in the experiment.
-    my_server : Server
-        The server object used in the experiment.
-    """
-    
-    file_path = './dataset/data/sampled_data/'
-    users_data = load_users_data(file_path,number_of_users=number_of_users, seed=seed)
-    number_of_clients_by_users = number_of_clients // number_of_users
+def setup_experiment_features_skew(model,number_of_clients,number_of_samples_by_clients, seed =42) :
+    clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
-    for user in range(number_of_users):
-        if user % 3 == 1: # if user number is odd we will dilate the image with kernel (2,2)
-            clientdata = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, erosion=0, dilatation=1, seed =seed)
-            heterogeneity = f'dilatation'
-        elif user % 3 == 2 : # if user number is 0 don't change anything
-            clientdata = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, seed =seed)
-            heterogeneity = 'None'
-        else : # if user number is odd apply erosion to the image with kernel (2,2)
-            clientdata = create_user_data_distribution(user = users_data[user],number_of_clients= number_of_clients_by_users,samples_by_client_of_each_labels= number_of_samples_by_clients, erosion=1, dilatation=0, seed =seed)
-            heterogeneity = f'erosion'
-
-        for id in range(number_of_clients_by_users):
-            client = Client(id+ user*number_of_clients_by_users,clientdata[id])
-            setattr(client,'heterogeneity',heterogeneity)
-            clientlist.append(client)
-    for client in clientlist : 
-        data_preparation(client)
+    for id in range(number_of_clients):
+        clientlist.append(Client(id,clientdata[id]))
     my_server = Server(model)
+    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
+    n = number_of_clients//3
+    for i in range(3):
+        start_index = i * n
+        end_index = (i + 1) * n
+
+        clientlistrotated = clientlist[start_index:end_index]
+        for client in clientlistrotated:
+            if client.id % 3 == 1:
+                client.data['x'] = erode_images(client.data['x'])
+                client.heterogeneity = 'erosion'
+            elif client.id % 3 == 2 :
+                client.data['x'] = dilate_images(client.data['x'])
+                client.heterogeneity = 'dilatation'
+            else :
+                client.heterogeneity = 'none'   
+            data_preparation(client)
+        clientlist[start_index:end_index] = clientlistrotated
     return my_server, clientlist
-
-

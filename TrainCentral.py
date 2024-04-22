@@ -55,15 +55,13 @@ for exp_id, experiment in enumerate(experiments):
         with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
             model = SimpleLinear()
             if heterogeneity == 'concept_shift_on_features':
-                my_server, client_list  = setup_experiment_rotation(number_of_clients,number_of_samples_of_each_labels_by_clients,model)
+                my_server, client_list  = setup_experiment_rotation(model,number_of_clients,number_of_samples_of_each_labels_by_clients)
             elif heterogeneity == 'concept_shift_on_labels':
-                my_server, client_list  = setup_experiment_labelswap(number_of_clients,number_of_samples_of_each_labels_by_clients,model,number_of_cluster=number_of_clusters,seed=seed)
+                my_server, client_list  = setup_experiment_labelswap(model,number_of_clients,number_of_samples_of_each_labels_by_clients,number_of_cluster=number_of_clusters,seed=seed)
             elif heterogeneity == 'labels_distribution_skew':
                 my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)   
             elif heterogeneity == 'features_distribution_skew':
-                lr = 0.001
-                number_of_users = 9
-                my_server, client_list = setup_experiment_features_skew(model,number_of_clients,number_of_users,number_of_samples_of_each_labels_by_clients,seed=seed)
+                my_server, client_list = setup_experiment_features_skew(model,number_of_clients,number_of_samples_of_each_labels_by_clients,seed=seed)
             elif heterogeneity == 'quantity_skew':
                 my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,skewlist=[1, 0.5, 0.25, 0.1, 0.05],seed = seed)
             else : 
