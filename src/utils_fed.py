@@ -296,7 +296,7 @@ def calculate_cluster_id(my_server,client_list, number_of_clusters=4):
     listofcluster = [client.cluster_id for client in client_list]
     return listofcluster
 
-def init_server_cluster(my_server,client_list, number_of_clusters=4, seed = 42):
+def init_server_cluster(my_server,client_list, number_of_clusters, seed = 0):
     # Set client to random cluster for first round
     from src.models import MnistNN, SimpleLinear
     from src.utils_training import loss_calculation
@@ -348,7 +348,7 @@ def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, num
     from src.utils_training import train_model
     import numpy as np
     if initcluster == True : 
-        init_server_cluster(my_server,client_list, number_of_clusters=number_of_clusters, seed = 42)
+        init_server_cluster(my_server,client_list, number_of_clusters=number_of_clusters, seed = 0)
     for round in range(0, rounds):
         print('Init round {} :'.format(round+1))
         set_client_cluster(my_server, client_list, number_of_clusters=number_of_clusters, epochs=10)
