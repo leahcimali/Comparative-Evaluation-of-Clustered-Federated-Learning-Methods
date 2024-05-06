@@ -65,9 +65,9 @@ for exp_id, experiment in enumerate(experiments):
                                                                 skewlist=[[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]], 
                                                                 ratiolist = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]],seed = 42)
     elif heterogeneity == 'labels_distribution_skew_upsampled':
-        my_server2, client_list2 = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,
+        my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,
                                                                 skewlist=[[0,3,4,5,6,7,8,9],[0,1,2,5,6,7,8,9],[0,1,2,3,4,7,8,9],[0,1,2,3,4,5,6,9]], 
-                                                                ratiolist = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]],,seed = 42)
+                                                                ratiolist = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]],seed = 42)
     elif heterogeneity == 'features_distribution_skew':
         my_server, client_list = setup_experiment_features_skew(model, number_of_clients, number_of_samples_of_each_labels_by_clients, seed)
     elif heterogeneity == 'quantity_skew':
@@ -77,7 +77,9 @@ for exp_id, experiment in enumerate(experiments):
         print('Error no heterogeneity type defined')
     print(heterogeneity)
     fed_training_plan_client_side(my_server,client_list, rounds ,epochs,number_of_clusters=number_of_clusters,lr=lr,initcluster=True)
-                    
+    for cluster_id in range(number_of_clusters): 
+        torch.save(my_server.clusters_models[cluster_id].state_dict(), f'./results/{output}_client_model_cluster_{cluster_id}.pth')
+                
     with open("./results/{}.txt".format(output), 'w') as f:
         with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
             report_CFL(my_server,client_list,config)
