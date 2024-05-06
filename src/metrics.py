@@ -154,3 +154,43 @@ def plot_mnist(image,label):
     plt.title(f'MNIST Digit: {label}')  # Add the label as the title
     plt.axis('off')  # Turn off axis
     plt.show()
+    
+import matplotlib.pyplot as plt
+
+def plot_weights(model):
+    # Get the weights of the first and second layers
+    first_layer_weights = model.fc1.weight.data.numpy()
+    second_layer_weights = model.fc2.weight.data.numpy()
+
+    # Define vmin and vmax values for the plots
+    vmin_values = [0.1, 0.3, 0.5]
+    vmax_values = [0.1, 0.3, 0.5]
+
+    # Create a (2, 3) subplot grid
+    fig, axs = plt.subplots(2, 3, figsize=(18, 12))
+
+    # Flatten the axes array for easier indexing
+    axs = axs.flatten()
+
+    # Plot the input weights for the first layer with different vmin and vmax values
+    for i, (vmin, vmax) in enumerate(zip(vmin_values, vmax_values)):
+        axs[i].imshow(first_layer_weights, cmap='coolwarm', aspect='auto', vmin=-vmin, vmax=vmax)
+        axs[i].set_title('First Layer: vmin={}, vmax={}'.format(vmin, vmax))
+        axs[i].set_xlabel('Input Pixel')
+        axs[i].set_ylabel('Neuron in First Layer')
+        axs[i].axis('off')
+
+    # Plot the output weights for the second layer with different vmin and vmax values
+    for i, (vmin, vmax) in enumerate(zip(vmin_values, vmax_values)):
+        axs[i+3].imshow(second_layer_weights, cmap='coolwarm', aspect='auto', vmin=-vmin, vmax=vmax)
+        axs[i+3].set_title('Second Layer: vmin={}, vmax={}'.format(vmin, vmax))
+        axs[i+3].set_xlabel('Neuron in First Layer')
+        axs[i+3].set_ylabel('Output Neuron')
+        axs[i+3].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+# Example usage:
+# Assuming you have already instantiated and trained your SimpleLinear model
+# plot_weight_subplots(model)

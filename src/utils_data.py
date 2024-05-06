@@ -195,7 +195,7 @@ def unbalancing(client,labels_list ,ratio_list, plot = False):
     setattr(client,'heterogeneity',str((labels_list,ratio_list)))
 
 
-def setup_experiment_labels_skew(model,number_of_clients=48,number_of_samples_by_clients=50,skewlist=[[1,2],[3,4],[5,6],[7,8],[9,0]], ratiolist = [[0.5,0.5],[0.4,0.4],[0.3,0.3],[0.2,0.2],[0.1,0.1]],seed = 42):
+def setup_experiment_labels_skew(model,number_of_clients=48,number_of_samples_by_clients=50,skewlist=[[1,2],[3,4],[5,6],[7,8]], ratiolist = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]],seed = 42):
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
     for id in range(number_of_clients):

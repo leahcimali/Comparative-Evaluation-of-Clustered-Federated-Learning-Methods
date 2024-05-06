@@ -17,6 +17,7 @@ from src.fedclass import Client, Server
 from src.utils_data import setup_experiment_rotation, setup_experiment_labels_skew,setup_experiment_labelswap,setup_experiment_quantity_skew, centralize_data, setup_experiment_features_skew
 from src.utils_training import train_model, test_model
 from src.utils_fed import fed_training_plan
+from src.metrics import plot_weights
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
@@ -59,7 +60,15 @@ for exp_id, experiment in enumerate(experiments):
             elif heterogeneity == 'concept_shift_on_labels':
                 my_server, client_list  = setup_experiment_labelswap(model,number_of_clients,number_of_samples_of_each_labels_by_clients,number_of_cluster=number_of_clusters,seed=seed)
             elif heterogeneity == 'labels_distribution_skew':
-                my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)   
+                my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)
+            elif heterogeneity == 'labels_distribution_skew_balancing':
+                my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients, 
+                                                                skewlist=[[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]], 
+                                                                ratiolist = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]],seed = 42)
+            elif heterogeneity == 'labels_distribution_skew_upsampled':
+                my_server2, client_list2 = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,
+                                                                        skewlist=[[0,3,4,5,6,7,8,9],[0,1,2,5,6,7,8,9],[0,1,2,3,4,7,8,9],[0,1,2,3,4,5,6,9]], 
+                                                                ratiolist = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]],,seed = 42)
             elif heterogeneity == 'features_distribution_skew':
                 my_server, client_list = setup_experiment_features_skew(model,number_of_clients,number_of_samples_of_each_labels_by_clients,seed=seed)
             elif heterogeneity == 'quantity_skew':
@@ -71,15 +80,16 @@ for exp_id, experiment in enumerate(experiments):
             print("Centralized results")    
             centralized_model = SimpleLinear()
             train_loader, test_loader = centralize_data(client_list)
-            train_model(centralized_model, train_loader, test_loader,centralized_model_epochs,learning_rate= lr)
+            train_model(centralized_model, train_loader, test_loader,centralized_model_epochs, learning_rate= lr)
             test_central = test_model(centralized_model, test_loader)
             print('centralized model accuracy')
             print("Accuracy: {:.2f}%".format(test_central*100))
             results['central'] = test_central*100
-            # Centralized Personalized results
+            # Personalized results
             heterogeneity_types = set(client.heterogeneity for client in client_list)
             model = SimpleLinear()
             for heterogeneity_type in heterogeneity_types :
+                # Centralized by heterogeneity
                 client_of_type = [client for client in client_list if client.heterogeneity == heterogeneity_type]
                 train_loader, test_loader = centralize_data(client_of_type)
                 personalized_centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs,learning_rate= lr ) 
@@ -87,6 +97,15 @@ for exp_id, experiment in enumerate(experiments):
                 print('personalized centralized model Accuracy with rotation ', heterogeneity_type)
                 print("Accuracy: {:.2f}%".format(test_central*100))
                 results[f'personalized central ({heterogeneity_type})'] = test_central*100
+                # Federated Learning by heterogeneity 
+                print('personalized Federated')
+                hetero_server = copy.deepcopy(my_server)
+                fed_training_plan(hetero_server, client_of_type,federated_rounds, federated_local_epochs,lr)
+                test_federatedmodel = test_model(hetero_server.model, test_loader)
+                print(f'Federated model heterogeneity {heterogeneity_type} accuracy')
+                print("Accuracy: {:.2f}%".format(test_federatedmodel*100))
+                results[f'federated  {heterogeneity_type}'] = test_federatedmodel*100
+                
 
             # federated
             fed_training_plan(my_server, client_list,federated_rounds, federated_local_epochs,lr)
