@@ -312,7 +312,6 @@ def erode_images(x_train, kernel_size=(3, 3)):
         eroded_images[i] = eroded_image
 
     return eroded_images
-from src.metrics import plot_mnist
 
 
 

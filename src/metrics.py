@@ -157,40 +157,53 @@ def plot_mnist(image,label):
     
 import matplotlib.pyplot as plt
 
-def plot_weights(model):
+def plot_weights_heatmap(model, v_value=0.1):
     # Get the weights of the first and second layers
     first_layer_weights = model.fc1.weight.data.numpy()
     second_layer_weights = model.fc2.weight.data.numpy()
 
-    # Define vmin and vmax values for the plots
-    vmin_values = [0.1, 0.3, 0.5]
-    vmax_values = [0.1, 0.3, 0.5]
+    # Create custom colormap
+    cmap = 'coolwarm'
 
-    # Create a (2, 3) subplot grid
-    fig, axs = plt.subplots(2, 3, figsize=(18, 12))
+    # Plot the input weights of the first layer
+    plt.figure(figsize=(10, 12))
 
-    # Flatten the axes array for easier indexing
-    axs = axs.flatten()
+    plt.subplot(2, 1, 1)
+    plt.imshow(first_layer_weights, cmap=cmap, aspect='auto', vmin=-v_value, vmax=v_value)
+    plt.title('Input Weights of the Model (fc1)')
+    plt.xlabel('Input Pixel')
+    plt.ylabel('Neuron in First Layer')
+    plt.colorbar(label='Weight Value')
 
-    # Plot the input weights for the first layer with different vmin and vmax values
-    for i, (vmin, vmax) in enumerate(zip(vmin_values, vmax_values)):
-        axs[i].imshow(first_layer_weights, cmap='coolwarm', aspect='auto', vmin=-vmin, vmax=vmax)
-        axs[i].set_title('First Layer: vmin={}, vmax={}'.format(vmin, vmax))
-        axs[i].set_xlabel('Input Pixel')
-        axs[i].set_ylabel('Neuron in First Layer')
-        axs[i].axis('off')
-
-    # Plot the output weights for the second layer with different vmin and vmax values
-    for i, (vmin, vmax) in enumerate(zip(vmin_values, vmax_values)):
-        axs[i+3].imshow(second_layer_weights, cmap='coolwarm', aspect='auto', vmin=-vmin, vmax=vmax)
-        axs[i+3].set_title('Second Layer: vmin={}, vmax={}'.format(vmin, vmax))
-        axs[i+3].set_xlabel('Neuron in First Layer')
-        axs[i+3].set_ylabel('Output Neuron')
-        axs[i+3].axis('off')
+    # Plot the output weights of the second layer
+    plt.subplot(2, 1, 2)
+    plt.imshow(second_layer_weights, cmap=cmap, aspect='auto', vmin=-v_value, vmax=v_value)
+    plt.title('Output Weights of the Model (fc2)')
+    plt.xlabel('Neuron in First Layer')
+    plt.ylabel('Output Neuron')
+    plt.colorbar(label='Weight Value')
 
     plt.tight_layout()
     plt.show()
+    
+import torch
+from sklearn.metrics.pairwise import cosine_similarity
+
+def flatten_weights(model):
+    flattened_weights = []
+    for param in model.parameters():
+        flattened_weights.extend(param.data.flatten().numpy())
+    return flattened_weights
+
+def calculate_cosine_similarity(model1, model2):
+    # Flatten the weights of both models
+    weights1 = flatten_weights(model1)
+    weights2 = flatten_weights(model2)
+    
+    # Calculate the cosine similarity between the flattened weights
+    similarity = cosine_similarity([weights1], [weights2])[0][0]
+    return similarity
 
 # Example usage:
-# Assuming you have already instantiated and trained your SimpleLinear model
-# plot_weight_subplots(model)
+# Assuming you have two models named 'model1' and 'model2'
+# similarity = calculate_cosine_similarity(model1, model2)
