@@ -1,186 +1,254 @@
 {
-    "experiments": [  
+    "experiments": [    
+
+
         {
             "seed": 42,
             "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 10,
+            "number_of_samples_of_each_labels_by_clients": 100,
+            
             "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client001", 
-            "heterogeneity": "features_distribution_skew"
+            "federated_local_epochs": 50,
+            "number_of_clusters" :4,
+            "output": "concept_shift_on_features_client48",
+            "heterogeneity" : "concept_shift_on_features"
+            
         },
         {
             "seed": 42,
             "number_of_clients": 48,
+            "number_of_samples_of_each_labels_by_clients": 100,
+            
+            "federated_rounds": 100,
+            "federated_local_epochs": 50,
+            "number_of_clusters" :6,
+            "output": "concept_shift_on_labels_client48",
+            "heterogeneity" : "concept_shift_on_labels"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 48,
+            "number_of_samples_of_each_labels_by_clients": 100,
+            
+            "federated_rounds": 100,
+            "federated_local_epochs": 50,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_client48",
+            "heterogeneity" : "labels_distribution_skew"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 48,
+            "number_of_samples_of_each_labels_by_clients": 100,
+            
+            "federated_rounds": 100,
+            "federated_local_epochs": 50,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_balancing_client48",
+            "heterogeneity" : "labels_distribution_skew_balancing"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 48,
+            "number_of_samples_of_each_labels_by_clients": 100,
+            
+            "federated_rounds": 100,
+            "federated_local_epochs": 50,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_upsampled_client48",
+            "heterogeneity" : "labels_distribution_skew_upsampled"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 48,
+            "number_of_samples_of_each_labels_by_clients": 100,
+            
+            "federated_rounds": 100,
+            "federated_local_epochs": 50,
+            "number_of_clusters" :3,
+            "output": "feature_distribution_skew_client48",
+            "heterogeneity" : "features_distribution_skew"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 48,
+            "number_of_samples_of_each_labels_by_clients": 150,
+            
+            "federated_rounds": 100,
+            "federated_local_epochs": 50,
+            "number_of_clusters" :3,
+            "output": "quantity_skew_client48",
+            "heterogeneity" : "quantity_skew"
+            
+        },
+
+
+
+
+        {
+            "seed": 42,
+            "number_of_clients": 240,
             "number_of_samples_of_each_labels_by_clients": 20,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client002", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "concept_shift_on_features_client240",
+            "heterogeneity" : "concept_shift_on_features"
+            
+        },
+        {
             "seed": 42,
-            "number_of_clients": 48,
+            "number_of_clients": 240,
+            "number_of_samples_of_each_labels_by_clients": 20,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :6,
+            "output": "concept_shift_on_labels_client240",
+            "heterogeneity" : "concept_shift_on_labels"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 240,
+            "number_of_samples_of_each_labels_by_clients": 20,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_client240",
+            "heterogeneity" : "labels_distribution_skew"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 240,
+            "number_of_samples_of_each_labels_by_clients": 20,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_balancing_client240",
+            "heterogeneity" : "labels_distribution_skew_balancing"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 240,
+            "number_of_samples_of_each_labels_by_clients": 20,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_upsampled_client240",
+            "heterogeneity" : "labels_distribution_skew_upsampled"
+            
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 240,
+            "number_of_samples_of_each_labels_by_clients": 20,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :3,
+            "output": "feature_distribution_skew_client240",
+            "heterogeneity" : "features_distribution_skew"
+        
+        },
+        {
+            "seed": 42,
+            "number_of_clients": 240,
             "number_of_samples_of_each_labels_by_clients": 30,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client003", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :3,
+            "output": "quantity_skew_client240",
+            "heterogeneity" : "quantity_skew"
+            
+        },
+
+
+
+        
+        {
             "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 40,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client004", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 50,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client005", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 60,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client006", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 70,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client007", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 80,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client008", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 90,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client009", 
-            "heterogeneity": "features_distribution_skew"
-        }, {
-            "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 100,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "client010", 
-            "heterogeneity": "features_distribution_skew"
+            "number_of_clients": 480,
+            "number_of_samples_of_each_labels_by_clients": 10,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "concept_shift_on_features_client480",
+            "heterogeneity" : "concept_shift_on_features"
+            
         },
         {
             "seed": 42,
-            "number_of_clients": 6,
-            "number_of_samples_of_each_labels_by_clients": 800,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew001",
-        "heterogeneity" : "features_distribution_skew"
+            "number_of_clients": 480,
+            "number_of_samples_of_each_labels_by_clients": 10,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :6,
+            "output": "concept_shift_on_labels_client480",
+            "heterogeneity" : "concept_shift_on_labels"
+            
         },
         {
             "seed": 42,
-            "number_of_clients": 12,
-            "number_of_samples_of_each_labels_by_clients": 400,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew002",
-        "heterogeneity" : "features_distribution_skew"
+            "number_of_clients": 480,
+            "number_of_samples_of_each_labels_by_clients": 10,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_client480",
+            "heterogeneity" : "labels_distribution_skew"
+            
         },
         {
             "seed": 42,
-            "number_of_clients": 24,
-            "number_of_samples_of_each_labels_by_clients": 200,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew003",
-        "heterogeneity" : "features_distribution_skew"
+            "number_of_clients": 480,
+            "number_of_samples_of_each_labels_by_clients": 10,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_balancing_client480",
+            "heterogeneity" : "labels_distribution_skew_balancing"
+            
         },
         {
             "seed": 42,
-            "number_of_clients": 48,
-            "number_of_samples_of_each_labels_by_clients": 100,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew004",
-        "heterogeneity" : "features_distribution_skew"
+            "number_of_clients": 480,
+            "number_of_samples_of_each_labels_by_clients": 10,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :4,
+            "output": "labels_distribution_skew_upsampled_client480",
+            "heterogeneity" : "labels_distribution_skew_upsampled"
+            
         },
         {
             "seed": 42,
-            "number_of_clients": 96,
-            "number_of_samples_of_each_labels_by_clients": 50,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew005",
-        "heterogeneity" : "features_distribution_skew"
-        },
-        {
-            "seed": 42,
-            "number_of_clients": 192,
-            "number_of_samples_of_each_labels_by_clients": 25,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew006",
-        "heterogeneity" : "features_distribution_skew"
-        },
-        {
-            "seed": 42,
-            "number_of_clients": 396,
-            "number_of_samples_of_each_labels_by_clients": 12,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew007",
-        "heterogeneity" : "features_distribution_skew"
-        },
-        {
-            "seed": 42,
-            "number_of_clients": 600,
-            "number_of_samples_of_each_labels_by_clients": 8,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew009",
-        "heterogeneity" : "features_distribution_skew"
-        },
-        {
-            "seed": 42,
-            "number_of_clients": 1200,
-            "number_of_samples_of_each_labels_by_clients": 4,
-            "federated_rounds": 100,
-            "federated_local_epochs": 40,
-            "number_of_clusters" : 3,
-            "output": "clientfeatureskew0010",
-        "heterogeneity" : "features_distribution_skew"
+            "number_of_clients": 480,
+            "number_of_samples_of_each_labels_by_clients": 10,
+            
+            "federated_rounds": 200,
+            "federated_local_epochs": 10,
+            "number_of_clusters" :3,
+            "output": "feature_distribution_skew_client480",
+            "heterogeneity" : "features_distribution_skew"
+            
         }
     ]
 }

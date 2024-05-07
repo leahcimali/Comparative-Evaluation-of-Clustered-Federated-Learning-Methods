@@ -71,3 +71,6 @@ Results.ipynb
 dataset/*
 results/* 
 src/__pycache__/*
+centralconfig.json
+clientconfig.json
+serverconfig.json
