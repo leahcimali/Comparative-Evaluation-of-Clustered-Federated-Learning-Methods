@@ -8,6 +8,7 @@ import importlib
 import contextlib
 from pathlib import Path
 import torch
+import pandas as pd
 
 print(torch.__version__)
 import src.config
@@ -15,11 +16,12 @@ from src.models import MnistNN, SimpleLinear
 from src.fedclass import Client, Server
 from src.utils_data import setup_experiment_rotation, setup_experiment_labelswap, setup_experiment_quantity_skew, setup_experiment_labels_skew, setup_experiment_features_skew
 from src.utils_training import train_model, test_model
+from src.utils_fed import model_weight_matrix
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import json
-from src.metrics import report_CFL, plot_weights 
+from src.metrics import report_CFL
 lr = 0.1
 # Load config from JSON file
 with open('clientconfig.json') as config_file:
@@ -79,7 +81,11 @@ for exp_id, experiment in enumerate(experiments):
     fed_training_plan_client_side(my_server,client_list, rounds ,epochs,number_of_clusters=number_of_clusters,lr=lr,initcluster=True)
     for cluster_id in range(number_of_clusters): 
         torch.save(my_server.clusters_models[cluster_id].state_dict(), f'./results/{output}_client_model_cluster_{cluster_id}.pth')
-                
+    weight_matrix = model_weight_matrix(client_list)
+    client_cluster = [client.cluster_id for client in client_list]
+    weight_matrix['cluster'] = client_cluster
+    import pickle
+    weight_matrix.to_pickle(f'./results/{output}_client_weights.pkl')    
     with open("./results/{}.txt".format(output), 'w') as f:
         with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
             report_CFL(my_server,client_list,config)

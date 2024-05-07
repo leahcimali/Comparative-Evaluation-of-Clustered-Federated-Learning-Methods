@@ -8,9 +8,11 @@ import importlib
 import contextlib
 from pathlib import Path
 import torch
-
+import pandas as pd
 print(torch.__version__)
 import src.config
+from src.utils_fed import model_weight_matrix
+
 from src.models import MnistNN, SimpleLinear 
 from src.fedclass import Client, Server
 from src.utils_data import setup_experiment_rotation, setup_experiment_labelswap, setup_experiment_quantity_skew, setup_experiment_labels_skew,centralize_data, setup_experiment_features_skew
@@ -72,6 +74,11 @@ for exp_id, experiment in enumerate(experiments):
         my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,seed = seed)
         
     fed_training_plan_on_shot_k_means(my_server,client_list, cfl_before_cluster_rounds , cfl_after_cluster_rounds , cfl_local_epochs,lr= lr, number_of_clusters=number_of_clusters)
+    weight_matrix = model_weight_matrix(client_list)
+    client_cluster = [client.cluster_id for client in client_list]
+    weight_matrix['cluster'] = client_cluster
+    import pickle
+    weight_matrix.to_pickle(f'./results/{output}_client_weights.pkl')  
     for cluster_id in range(number_of_clusters): 
         torch.save(my_server.clusters_models[cluster_id].state_dict(), f'./results/{output}_server_model_cluster_{cluster_id}.pth')
     with open("./results/{}.txt".format(output), 'w') as f:

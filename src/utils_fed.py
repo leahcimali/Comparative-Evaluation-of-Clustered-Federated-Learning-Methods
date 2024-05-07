@@ -191,7 +191,7 @@ def model_weight_matrix(client_list):
     return weight_matrix
 
 def k_means_cluster_id(weight_matrix, k): 
-    
+    import pandas as pd
     from sklearn.cluster import KMeans
     
     """
@@ -223,10 +223,12 @@ def k_means_cluster_id(weight_matrix, k):
 
 
 def k_means_clustering(client_list,number_of_clusters): 
+    import pickle
     weight_matrix = model_weight_matrix(client_list)
     clusters_identities = k_means_cluster_id(weight_matrix, number_of_clusters)
     for client in client_list : 
         setattr(client, 'cluster_id',clusters_identities[client.id])
+        
 
         
 def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clustering=3, round_after_clustering=3, epoch=10, number_of_clusters = 4,lr = 0.001):
@@ -272,7 +274,7 @@ def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clust
         send_server_model_to_client(client_list, my_server)
         for client in client_list:
             print('Training local model for client {} !'.format(client.id))
-            client.model = train_model(client.model, client.data_loader['train'], client.data_loader['test'],epoch,learning_rate=lr)
+            client.model = train_model(client.model, client.data_loader['train'], client.data_loader['test'], epoch, learning_rate=lr)
         print('Aggregating local models with FedAVG !')
         fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))

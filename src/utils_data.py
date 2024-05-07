@@ -6,7 +6,7 @@ from src.fedclass import Client, Server
 from torch.utils.data import ConcatDataset
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def shuffle (array,seed=42): 
+def shuffle(array,seed=42): 
     # Assuming arr is your numpy array of shape (n, 28, 28)  # Example array
 
 # Generate a list of shuffled indices
@@ -132,7 +132,7 @@ def setup_experiment_labelswap(model,number_of_clients,number_of_samples_by_clie
         clientlist[start_index:end_index] = clientlistswap
     return my_server, clientlist
 
-def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[0.25,0.25,0.25,0.25,0.25], seed = 42):
+def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[0.1,0.4,1], seed = 42):
     number_of_skew = len(skewlist)
     number_of_client_by_skew = number_of_client//number_of_skew 
     clientdata = [data_distribution(number_of_client_by_skew,int(number_of_max_samples*skew),seed) for skew in skewlist]        
