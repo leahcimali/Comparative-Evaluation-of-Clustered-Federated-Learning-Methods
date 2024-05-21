@@ -73,7 +73,7 @@ for exp_id, experiment in enumerate(experiments):
     elif heterogeneity == 'features_distribution_skew':
         my_server, client_list = setup_experiment_features_skew(model, number_of_clients, number_of_samples_of_each_labels_by_clients, seed)
     elif heterogeneity == 'quantity_skew':
-        my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,skewlist=[1, 0.5, 0.25, 0.1, 0.05],seed = seed)
+        my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,seed = seed)
         
     else : 
         print('Error no heterogeneity type defined')
