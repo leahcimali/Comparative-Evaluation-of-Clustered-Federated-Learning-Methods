@@ -12,7 +12,8 @@ import copy
 
 import copy
 
-def send_server_model_to_client(client_list, my_server): 
+def send_server_model_to_client(client_list, my_server):
+    # As title 
     if my_server.num_clusters == None: 
         for client in client_list:
             setattr(client, 'model', copy.deepcopy(my_server.model))
@@ -25,51 +26,9 @@ def send_server_model_to_client(client_list, my_server):
                 setattr(client, 'model', copy.deepcopy(my_server.clusters_models[client.cluster_id]))
 
 import copy
-'''
-def fedavg(my_server, client_list):
-
-    """
-    Implementation of the FedAvg Algorithm as described in:
-    McMahan, Brendan, et al. "Communication-efficient learning of deep networks from decentralized data. 
-    Artificial intelligence and statistics. PMLR, 2017
-    TO DO: Need to add client samples ponderation in case of non-uniform clients data samples
-    """
-    if my_server.num_clusters == None:
-        state_dict = client_list[0].model.state_dict()
-        for name, param in client_list[0].model.named_parameters():
-            for i in range(1, len(client_list)):
-                state_dict[name] += client_list[i].model.state_dict()[name]
-            state_dict[name] /= len(client_list)        
-        my_server.model.load_state_dict(state_dict)
-    else:
-        for cluster_id in range(my_server.num_clusters):
-            print('FedAVG on cluster {}!'.format(cluster_id))
-            # Filter clients belonging to the current cluster
-            cluster_client_list = [client for client in client_list if client.cluster_id == cluster_id]
-            print('Number of clients in cluster {}: {}'.format(cluster_id, len(cluster_client_list)))
-            
-            # Initialize a dictionary to store parameter sums
-            param_sums = {name: torch.zeros_like(param.data) for name, param in cluster_client_list[0].model.named_parameters()}
-            
-            # Sum up parameters from all clients
-            total_clients = len(cluster_client_list)
-            for client in cluster_client_list:
-                for name, param in client.model.named_parameters():
-                    param_sums[name] += param.data
-            
-            # Average parameters
-            averaged_params = {name: param_sum / total_clients for name, param_sum in param_sums.items()}
-            
-            # Create a new model and load averaged parameters
-            new_model = copy.deepcopy(cluster_client_list[0].model)  # Assuming all models have the same architecture
-            for name, param in new_model.named_parameters():
-                param.data = averaged_params[name]
-            
-            # Store the new model in the server's cluster models
-            my_server.clusters_models[cluster_id] = new_model
-'''           
 
 def model_avg(client_list):
+    # Create a new model with the weight average of clients' weights
     new_model = copy.deepcopy(client_list[0].model)
         
     # Initialize a variable to store the total size of all local training datasets
@@ -299,7 +258,7 @@ def calculate_cluster_id(my_server,client_list, number_of_clusters=4):
     return listofcluster
 
 def init_server_cluster(my_server,client_list, number_of_clusters, seed = 0):
-    # Set client to random cluster for first round
+    # Set client to random cluster for first round. Used side 
     from src.models import MnistNN, SimpleLinear
     from src.utils_training import loss_calculation
     import numpy as np

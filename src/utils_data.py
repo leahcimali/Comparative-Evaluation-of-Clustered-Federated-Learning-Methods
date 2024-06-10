@@ -7,9 +7,8 @@ from torch.utils.data import ConcatDataset
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def shuffle(array,seed=42): 
-    # Assuming arr is your numpy array of shape (n, 28, 28)  # Example array
-
-# Generate a list of shuffled indices
+    # Function to shuffle the samples 
+    # Generate a list of shuffled indices
     shuffled_indices = np.arange(array.shape[0])
     np.random.shuffle(shuffled_indices)
 
@@ -17,7 +16,8 @@ def shuffle(array,seed=42):
     shuffled_arr = array[shuffled_indices].copy()
     return shuffled_arr
 
-def create_mnist_label_dict(seed = 42) : 
+def create_mnist_label_dict(seed = 42) :
+    # Create a dictionary of mnist samples by labels 
     from tensorflow.keras.datasets import mnist
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -61,6 +61,7 @@ def data_distribution(number_of_clients, samples_by_client_of_each_labels,seed =
     return client_dataset
 
 def rotate_images(client,rotation):
+    # Rotate images, used of concept shift on features
     images = client.data['x']
     setattr(client,'heterogeneity',str(rotation))
     if rotation >0 :
@@ -71,6 +72,7 @@ def rotate_images(client,rotation):
         client.data['x'] = np.array(rotated_images)
 
 def data_preparation(client):
+    # Train test split of a client's data and create onf dataloaders for local model training
     from sklearn.model_selection import train_test_split
     from torch.utils.data import DataLoader, Dataset,TensorDataset
     x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=42,stratify=client.data['y'])
@@ -88,6 +90,7 @@ def data_preparation(client):
     
 
 def setup_experiment_rotation(model,number_of_clients,number_of_samples_by_clients, seed =42) :
+    # Setup server and clients for concept shift on features
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
     for id in range(number_of_clients):
@@ -106,6 +109,7 @@ def setup_experiment_rotation(model,number_of_clients,number_of_samples_by_clien
     return my_server, clientlist
 
 def label_swap(labels, client):
+    # Function for label swapping use for concept shift on labels
     # labels : tuple of labels to swap
     newlabellist = client.data['y'] 
     otherlabelindex = newlabellist==labels[1]
@@ -115,6 +119,8 @@ def label_swap(labels, client):
     setattr(client,'heterogeneity', str(labels))
     
 def setup_experiment_labelswap(model,number_of_clients,number_of_samples_by_clients, swaplist=[(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)],number_of_cluster=1,seed =42):
+    # Setup server and clients for concept shift on labels
+    # Swap list will create a equal subset of clients where each labels in the tuples are swapped  
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
     for id in range(number_of_clients):
@@ -133,6 +139,8 @@ def setup_experiment_labelswap(model,number_of_clients,number_of_samples_by_clie
     return my_server, clientlist
 
 def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[0.1,0.2,0.6,1], seed = 42):
+    # Setup server and clients for quantity skew experiment
+    # Skew list create for each element an equal subset of clients with the corresponding percentage of the client data
     number_of_skew = len(skewlist)
     number_of_client_by_skew = number_of_client//number_of_skew 
     clientdata = [data_distribution(number_of_client_by_skew,int(number_of_max_samples*skew),seed) for skew in skewlist]        
@@ -148,6 +156,7 @@ def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samp
     return my_server, clientlist
     
 def centralize_data(clientlist):
+    # Centralize data of the federated learning setup for central model comparison
     from torch.utils.data import DataLoader,Dataset,TensorDataset
     x_train = np.concatenate([clientlist[id].train_test['x_train'] for id in range(len(clientlist))],axis = 0)
     x_test = np.concatenate([clientlist[id].train_test['x_test'] for id in range(len(clientlist))],axis = 0)
@@ -170,10 +179,12 @@ from imblearn.datasets import make_imbalance
 import matplotlib.pyplot as plt
 
 def ratio_func(y, multiplier, minority_class):
+    # downsample a label by multiplier
     target_stats = Counter(y)
     return {minority_class: int(multiplier * target_stats[minority_class])}
 
 def unbalancing(client,labels_list ,ratio_list, plot = False):
+    # downsample the dataset of a client with each elements of the labels_list will be downsample with the corresponding ration of ratio_list
     from imblearn.datasets import make_imbalance
     x_train = client.data['x']
     y_train = client.data['y']
@@ -196,6 +207,7 @@ def unbalancing(client,labels_list ,ratio_list, plot = False):
 
 
 def setup_experiment_labels_skew(model,number_of_clients=48,number_of_samples_by_clients=50,skewlist=[[1,2],[3,4],[5,6],[7,8]], ratiolist = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]],seed = 42):
+    # Setup server and clients for label distribution skew, each element of the skewlist will be downsamples by the corresponding ratio of rationlist 
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
     for id in range(number_of_clients):
@@ -262,7 +274,7 @@ def dilate_images(x_train, kernel_size=(3, 3)):
     import cv2
     """
     Perform dilation operation on a batch of images using a given kernel.
-
+    Make image 'bolder' for features distribution skew setup
     Parameters:
         x_train (ndarray): Input batch of images (3D array with shape (n, height, width)).
         kernel_size (tuple): Size of the structuring element/kernel for dilation.
@@ -289,6 +301,7 @@ def dilate_images(x_train, kernel_size=(3, 3)):
 def erode_images(x_train, kernel_size=(3, 3)):
     """
     Perform erosion operation on a batch of images using a given kernel.
+    Make image 'finner' for features distribution skew setup
 
     Parameters:
         x_train (ndarray): Input batch of images (3D array with shape (n, height, width)).
@@ -316,6 +329,8 @@ def erode_images(x_train, kernel_size=(3, 3)):
 
 
 def setup_experiment_features_skew(model,number_of_clients,number_of_samples_by_clients, seed =42) :
+    # Setup server and clients for features distribution skew experiments
+    
     clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
     clientlist = []
     for id in range(number_of_clients):

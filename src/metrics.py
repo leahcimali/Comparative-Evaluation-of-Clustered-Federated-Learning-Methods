@@ -88,67 +88,62 @@ def calinski_harabasz_index(X, labels):
 # ch_idx = calinski_harabasz_index(X, labels)
 
 
-def report_CFL(my_server, client_list, config, type = 'cluster'): 
+def report_CFL(my_server, client_list, config):
+    # function that create an experiment report and save it as a json
     from sklearn.metrics import silhouette_score
     import json
-    import yaml
-    if type == 'cluster' :
-        weight_matrix = model_weight_matrix(client_list)
-        clusters_identities = {client.id : client.cluster_id for client in client_list}
-        cluster_id = pd.DataFrame.from_dict(clusters_identities, orient='index', columns=['cluster_id'])
-        X = weight_matrix 
-        labels= cluster_id.values
-        try : 
-            silhouette_scores = silhouette_score(X, labels, metric='euclidean')
-        except ValueError:
-            silhouette_scores = None
-            
-        avg_intra_dist = average_intracluster_distance(X, labels)
-        intra_dist_var = intracluster_distance_variance(X, labels)
-        dunn_idx = dunn_index(X, labels)
-        db_idx = davies_bouldin_index(X, labels) 
-        config['silhouette'] = silhouette_scores
-        config['avg_intra_dist'] = intra_dist_var
-        config['duhn_index'] = dunn_idx
-        config['davies_bouldin_index'] = db_idx
+    import yaml   
+    weight_matrix = model_weight_matrix(client_list)
+    clusters_identities = {client.id : client.cluster_id for client in client_list}
+    cluster_id = pd.DataFrame.from_dict(clusters_identities, orient='index', columns=['cluster_id'])
+    X = weight_matrix 
+    labels= cluster_id.values
+    try : 
+        silhouette_scores = silhouette_score(X, labels, metric='euclidean')
+    except ValueError:
+        silhouette_scores = None
         
-        print('Number of clusters : ', my_server.num_clusters)
-        print ('AVG intra cluster dist : ', avg_intra_dist) 
-        print('Intracluster dist variance : ', intra_dist_var) 
-        print('Duhn index : ', dunn_idx)
-        print( 'davies_bouldin_index : ', db_idx)
-        print('silhouette_scores : ', silhouette_scores)
-        
-        for cluster_id in range(my_server.num_clusters):
-            print('For cluster ', cluster_id, ' : ')
-            client_cluster_list = [client for client in client_list if client.cluster_id == cluster_id]
-            clients_accs = []
-            print('Number of cluster members : ', len(client_cluster_list))
-            if len(client_cluster_list) > 0 :
-                client_heterogeneity = []
-                for client in client_cluster_list : 
-                    acc = test_model(my_server.clusters_models[cluster_id], client.data_loader['test'])*100
-                    clients_accs.append(acc)
-                print("Cluster accuracy : ", np.mean(clients_accs))
-                print("Cluster accuracy std : ", np.std(clients_accs))
-                cluster_heterogeneity = [client.heterogeneity for client in client_cluster_list]
-                values, counts = np.unique(cluster_heterogeneity, return_counts = True)
-                hetero_dict= {str(values[i]) : int(counts[i]) for i in range(len(values))}
-                for key, value in hetero_dict.items() : 
-                    print('Cluster heterogeneity : ', key , ' , Quantity :', value)
-                config[f'Cluster {cluster_id}'] = {'num_members' : len(client_cluster_list), 'accuracy' : np.mean(clients_accs), 'std' : np.std(clients_accs), 'members_heterogeneity':hetero_dict}
-            else: 
-                print('Cluster with no members !')
-            with open('./results/{}.json'.format(config['output']), 'w') as json_file:
-                json.dump(config, json_file, indent=4)
-    elif type == 'federated':
-        pass
-    elif type =='central' : 
-        pass
-    else :
-        print('Error no type ! ')
+    avg_intra_dist = average_intracluster_distance(X, labels)
+    intra_dist_var = intracluster_distance_variance(X, labels)
+    dunn_idx = dunn_index(X, labels)
+    db_idx = davies_bouldin_index(X, labels) 
+    config['silhouette'] = silhouette_scores
+    config['avg_intra_dist'] = intra_dist_var
+    config['duhn_index'] = dunn_idx
+    config['davies_bouldin_index'] = db_idx
+    print('Number of clusters : ', my_server.num_clusters)
+    print ('AVG intra cluster dist : ', avg_intra_dist) 
+    print('Intracluster dist variance : ', intra_dist_var) 
+    print('Duhn index : ', dunn_idx)
+    print( 'davies_bouldin_index : ', db_idx)
+    print('silhouette_scores : ', silhouette_scores)
+    
+    for cluster_id in range(my_server.num_clusters):
+        print('For cluster ', cluster_id, ' : ')
+        client_cluster_list = [client for client in client_list if client.cluster_id == cluster_id]
+        clients_accs = []
+        print('Number of cluster members : ', len(client_cluster_list))
+        if len(client_cluster_list) > 0 :
+            client_heterogeneity = []
+            for client in client_cluster_list : 
+                acc = test_model(my_server.clusters_models[cluster_id], client.data_loader['test'])*100
+                clients_accs.append(acc)
+            print("Cluster accuracy : ", np.mean(clients_accs))
+            print("Cluster accuracy std : ", np.std(clients_accs))
+            cluster_heterogeneity = [client.heterogeneity for client in client_cluster_list]
+            values, counts = np.unique(cluster_heterogeneity, return_counts = True)
+            hetero_dict= {str(values[i]) : int(counts[i]) for i in range(len(values))}
+            for key, value in hetero_dict.items() : 
+                print('Cluster heterogeneity : ', key , ' , Quantity :', value)
+            config[f'Cluster {cluster_id}'] = {'num_members' : len(client_cluster_list), 'accuracy' : np.mean(clients_accs), 'std' : np.std(clients_accs), 'members_heterogeneity':hetero_dict}
+        else: 
+            print('Cluster with no members !')
+        with open('./results/{}.json'.format(config['output']), 'w') as json_file:
+            json.dump(config, json_file, indent=4)
+
 
 def plot_mnist(image,label):
+    # Function to plot the mnist image
     import matplotlib.pyplot as plt
     plt.imshow(image, cmap='gray')
     plt.title(f'MNIST Digit: {label}')  # Add the label as the title
@@ -158,6 +153,8 @@ def plot_mnist(image,label):
 import matplotlib.pyplot as plt
 
 def plot_weights_heatmap(model, v_value=0.1):
+    # Function that plot the heatmap of model's weight
+    
     # Get the weights of the first and second layers
     first_layer_weights = model.fc1.weight.data.numpy()
     second_layer_weights = model.fc2.weight.data.numpy()
@@ -190,12 +187,17 @@ import torch
 from sklearn.metrics.pairwise import cosine_similarity
 
 def flatten_weights(model):
+    # Flatten the model's weights and create a weight's vector (used for cosine similarity calculation)
     flattened_weights = []
     for param in model.parameters():
         flattened_weights.extend(param.data.flatten().numpy())
     return flattened_weights
 
 def calculate_cosine_similarity(model1, model2):
+    # Example usage:
+    # Assuming you have two models named 'model1' and 'model2'
+    # similarity = calculate_cosine_similarity(model1, model2)
+    
     # Flatten the weights of both models
     weights1 = flatten_weights(model1)
     weights2 = flatten_weights(model2)
@@ -204,6 +206,3 @@ def calculate_cosine_similarity(model1, model2):
     similarity = cosine_similarity([weights1], [weights2])[0][0]
     return similarity
 
-# Example usage:
-# Assuming you have two models named 'model1' and 'model2'
-# similarity = calculate_cosine_similarity(model1, model2)
