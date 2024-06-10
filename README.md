@@ -15,9 +15,9 @@ Each training setup have a different training file :
 
 Each setup come with its own json config file where each dictionary inside the json correspond to one experimentation that will be trained iteratively.
 
-*You can change the heterogeneity by the following to simulate the different case of heterogeneity : 
+You can change the heterogeneity by the following to simulate the different case of heterogeneity : 
 
-"concept_shift_on_features", "concept_shift_on_labels", "labels_distribution_skew", "labels_distribution_skew_balancing", "labels_distribution_skew_upsampled", "features_distribution_skew", "quantity_skew"
+"concept_shift_on_features", "concept_shift_on_labels", "labels_distribution_skew", "labels_distribution_skew_balancing", "labels_distribution_skew_upsampled", "features_distribution_skew" and "quantity_skew"
 
 Each experiment will output:  
 - a .txt file that details the training process
