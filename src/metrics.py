@@ -89,7 +89,7 @@ def calinski_harabasz_index(X, labels):
 
 
 def report_CFL(my_server, client_list, config):
-    # function that create an experiment report and save it as a json
+    # function that create an experiment report for CFL and save it as a json with metrics and accuracies
     from sklearn.metrics import silhouette_score
     import json
     import yaml   

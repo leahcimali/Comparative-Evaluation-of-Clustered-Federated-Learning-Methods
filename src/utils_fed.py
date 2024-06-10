@@ -12,6 +12,8 @@ import copy
 
 import copy
 
+# STANDARD FL 
+
 def send_server_model_to_client(client_list, my_server):
     # As title 
     if my_server.num_clusters == None: 
@@ -114,7 +116,7 @@ def fed_training_plan(my_server, client_list,rounds=3, epoch=200,lr =0.001):
         fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))
 
-
+# FOR SERVER-SIDE CFL 
 def model_weight_matrix(client_list):
     import numpy as np
     import pandas as pd
@@ -242,23 +244,12 @@ def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clust
     for cluster_id in range(4): 
         torch.save(my_server.clusters_models[cluster_id].state_dict(), 'model_{}.pth'.format(cluster_id))
     '''    
-def calculate_cluster_id(my_server,client_list, number_of_clusters=4):
-    from src.models import MnistNN, SimpleLinear
-    from src.utils_training import loss_calculation
-    import numpy as np
-    for client in client_list:
-        #print('Calculating all cluster model loss on local data for client {} !'.format(client.id))
-        cluster_losses = []
-        for cluster_id in range(number_of_clusters):
-            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
-            cluster_losses.append(cluster_loss)
-        index_of_min_loss = np.argmin(cluster_losses)
-        client.cluster_id = index_of_min_loss
-    listofcluster = [client.cluster_id for client in client_list]
-    return listofcluster
+
+
+# FOR CLIENT-SIDE CFL 
 
 def init_server_cluster(my_server,client_list, number_of_clusters, seed = 0):
-    # Set client to random cluster for first round. Used side 
+    # Set client to random cluster for first round. Used for client_side CFL 
     from src.models import MnistNN, SimpleLinear
     from src.utils_training import loss_calculation
     import numpy as np
@@ -270,6 +261,7 @@ def init_server_cluster(my_server,client_list, number_of_clusters, seed = 0):
         
             
 def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
+    # Use the loss to calculate the cluster membership for client-side CFL
     from src.utils_training import loss_calculation
     import numpy as np
     for client in client_list:
