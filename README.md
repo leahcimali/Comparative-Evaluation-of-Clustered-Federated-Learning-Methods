@@ -4,13 +4,14 @@ submited to 'The 2nd IEEE International Conference on Federated Learning Technol
 Link for the results use in the article : https://drive.google.com/file/d/1dqdgmPpZFEFa0Cx7Fg03Z-S_XCZRdNOV/view?usp=sharing 
 
 Extract the content of 'results.rar' inside a directory named 'results'. 
+
 Figure of results can by found by heterogeneities inside the Notebook directory. 
 Not all figure where use in the article.
 
 Each training setup have a different training file : 
-traincentral.py : Will trained a centralized model, a federated model and both personalization by heterogeneity of centralized and federated models (refere to article for more details)
-trainCFLclient.py : will trained client-side CFL models 
-trainCFLserver.py : will trained server-side CFL models
+- TrainCentral.py : Will trained a centralized model, a federated model and both personalization by heterogeneity of centralized and federated models (refere to article for more details)
+- trainCFLclient.py : will trained client-side CFL models 
+- trainCFLserver.py : will trained server-side CFL models
 
 Each setup come with its own json config file where each dictionary inside the json correspond to one experimentation that will be trained iteratively.
 You can change the heterogeneity by the following to simulate the different case of heterogeneity : 
