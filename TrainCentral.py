@@ -12,7 +12,7 @@ import torch.optim as optim
 
 print(torch.__version__)
 import src.config
-from src.models import MnistNN, SimpleLinear 
+from src.models import SimpleLinear 
 from src.fedclass import Client, Server
 from src.utils_data import setup_experiment_rotation, setup_experiment_labels_skew,setup_experiment_labelswap,setup_experiment_quantity_skew, centralize_data, setup_experiment_features_skew
 from src.utils_training import train_model, test_model
