@@ -250,7 +250,7 @@ def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clust
 
 def init_server_cluster(my_server,client_list, number_of_clusters, seed = 0):
     # Set client to random cluster for first round. Used for client_side CFL 
-    from src.models import MnistNN, SimpleLinear
+    from src.models import SimpleLinear
     from src.utils_training import loss_calculation
     import numpy as np
     my_server.num_clusters = number_of_clusters
