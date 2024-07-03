@@ -2,14 +2,8 @@
 #from src.utils_data import my_data_loader, createLoaders
 
 
-import pandas as pd
 import torch
-from src.fedclass import Client, Server
-from src.utils_training import train_model
-from src.utils_data import data_distribution,data_preparation
-from sklearn.metrics import  mean_squared_error
 import copy
-
 import copy
 
 # STANDARD FL 

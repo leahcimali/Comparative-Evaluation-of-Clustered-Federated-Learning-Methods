@@ -2,8 +2,6 @@ from src.utils_training import test_model
 from src.utils_fed import model_weight_matrix
 import numpy as np 
 import pandas as pd
-import json
-from sklearn.metrics import silhouette_score
 from sklearn.metrics import pairwise_distances
 import numpy as np
 from scipy.spatial import distance

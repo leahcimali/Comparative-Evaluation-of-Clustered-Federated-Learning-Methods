@@ -2,27 +2,19 @@ from os import makedirs
 import sys
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import importlib
 import contextlib
-from pathlib import Path
 import torch
-import pandas as pd
+
 
 print(torch.__version__)
 import src.config
 from src.models import SimpleLinear
-from src.fedclass import Client, Server
 from src.utils_data import setup_experiment_rotation, setup_experiment_labelswap, setup_experiment_quantity_skew, setup_experiment_labels_skew, setup_experiment_features_skew
-from src.utils_training import train_model, test_model
 from src.utils_fed import model_weight_matrix
-import numpy as np
-import matplotlib.pyplot as plt
-import copy
 import json
 from src.metrics import report_CFL
 lr = 0.1
+
 # Load config from JSON file
 with open('clientconfig.json') as config_file:
     config_data = json.load(config_file)

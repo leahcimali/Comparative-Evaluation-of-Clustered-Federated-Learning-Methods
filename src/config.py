@@ -4,7 +4,7 @@ class Params():
 
     def __init__(self, config_file_path):
 
-        import json
+        return
 '''
         # Load the configuration file using the provided path
         with open(config_file_path) as f:

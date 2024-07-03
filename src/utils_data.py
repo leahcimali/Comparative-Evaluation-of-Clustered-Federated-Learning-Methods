@@ -1,9 +1,7 @@
 import torch
-from sklearn.datasets import load_digits
 import numpy as np
 from tensorflow.keras.datasets import mnist
 from src.fedclass import Client, Server
-from torch.utils.data import ConcatDataset
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def shuffle(array,seed=42): 

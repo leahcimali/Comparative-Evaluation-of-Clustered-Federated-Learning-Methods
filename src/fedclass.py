@@ -1,5 +1,3 @@
-import copy 
-
 class Client:
     # Define the client class
     def __init__(self, client_id, data):
