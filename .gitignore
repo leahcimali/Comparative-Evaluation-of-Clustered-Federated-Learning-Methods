@@ -1,4 +1,5 @@
 experiment_1.txt
+*.py~
 train_c16_samples100.txt
 train_client_48_sample50.txt
 train_client_48_samples10.txt
@@ -67,8 +68,7 @@ rotation.txt
 swap.txt
 clientlabelskew.txt
 Results.ipynb
-dataset/*
-results/* 
+dataset/* 
 src/__pycache__/*
 centralconfig.json
 clientconfig.json
