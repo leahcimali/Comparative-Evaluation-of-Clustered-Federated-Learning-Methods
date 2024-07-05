@@ -1,122 +1,144 @@
-from os import makedirs
 import sys
 
 import torch
-import contextlib
 import torch
 
 print(torch.__version__)
-import src.config
+
 from src.models import SimpleLinear 
-from src.utils_data import setup_experiment_rotation, setup_experiment_labels_skew,setup_experiment_labelswap,setup_experiment_quantity_skew, centralize_data, setup_experiment_features_skew
+from src.utils_data import setup_experiment, centralize_data
 from src.utils_training import train_model, test_model
 from src.utils_fed import fed_training_plan
 import numpy as np
 import copy
-import json
+
 
 # Load config from JSON file
-lr = 0.1
-with open('centralconfig.json') as config_file:
-    config_data = json.load(config_file)
 
-experiments = config_data['experiments']
-for exp_id, experiment in enumerate(experiments):
-    print(f"Running experiment {exp_id + 1}...")
-    # Instead of directly iterating over experiment[key], we will check if it's a list or a single value
-    for param_set in zip(*[experiment[key] if isinstance(experiment[key], list) else [experiment[key]] for key in experiment]):
-        config = dict(zip(experiment.keys(), param_set))  
-        seed = config['seed']
-        number_of_clients = config['number_of_clients']
-        number_of_samples_of_each_labels_by_clients = config['number_of_samples_of_each_labels_by_clients']
-        centralized_model_epochs = config['centralized_model_epochs']
-        federated_rounds = config['federated_rounds']
-        federated_local_epochs = config['federated_local_epochs']
-        number_of_clusters = config["number_of_clusters"]
-        output = config['output']
-        heterogeneity = config['heterogeneity']
-        config['type'] = 'central'
-        results = config
-        # Print current configuration
-        
-        # Your experiment code here...
-        # Make sure to use 'config' to access the parameters for the current experiment
+def run_experiments():
 
+    import pandas as pd
 
-    torch.manual_seed(seed)
-    with open("./results/{}.txt".format(output), 'w+') as f:
-        with contextlib.redirect_stdout(src.config.Tee(f, sys.stdout)):
-            model = SimpleLinear()
-            if heterogeneity == 'concept_shift_on_features':
-                my_server, client_list  = setup_experiment_rotation(model,number_of_clients,number_of_samples_of_each_labels_by_clients)
-            elif heterogeneity == 'concept_shift_on_labels':
-                my_server, client_list  = setup_experiment_labelswap(model,number_of_clients,number_of_samples_of_each_labels_by_clients,number_of_cluster=number_of_clusters,seed=seed)
-            elif heterogeneity == 'labels_distribution_skew':
-                my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,seed =42)
-            elif heterogeneity == 'labels_distribution_skew_balancing':
-                my_server, client_list = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients, 
-                                                                skewlist=[[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]], 
-                                                                ratiolist = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]],seed = 42)
-            elif heterogeneity == 'labels_distribution_skew_upsampled':
-                my_server2, client_list2 = setup_experiment_labels_skew(model,number_of_clients=number_of_clients, number_of_samples_by_clients=number_of_samples_of_each_labels_by_clients,
-                                                                        skewlist=[[0,3,4,5,6,7,8,9],[0,1,2,5,6,7,8,9],[0,1,2,3,4,7,8,9],[0,1,2,3,4,5,6,9]], 
-                                                                ratiolist = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]],seed = 42)
-            elif heterogeneity == 'features_distribution_skew':
-                my_server, client_list = setup_experiment_features_skew(model,number_of_clients,number_of_samples_of_each_labels_by_clients,seed=seed)
-            elif heterogeneity == 'quantity_skew':
-                my_server, client_list  = setup_experiment_quantity_skew(model,number_of_client= number_of_clients, number_of_max_samples= number_of_samples_of_each_labels_by_clients,seed = seed)
-            else : 
-                print('Error no heterogeneity type defined')
-            print(heterogeneity) 
-            # Centralized results
-            print("Centralized results")    
-            centralized_model = SimpleLinear()
-            train_loader, test_loader = centralize_data(client_list)
-            train_model(centralized_model, train_loader, test_loader,centralized_model_epochs, learning_rate= lr)
-            test_central = test_model(centralized_model, test_loader)
-            print('centralized model accuracy')
-            print("Accuracy: {:.2f}%".format(test_central*100))
-            results['central'] = test_central*100
-            torch.save(centralized_model.state_dict(), f'./results/{output}_centralized_model.pth')
-            # Personalized results
-            heterogeneity_types = set(client.heterogeneity for client in client_list)
-            model = SimpleLinear()
-            for heterogeneity_type in heterogeneity_types :
-                # Centralized by heterogeneity
-                client_of_type = [client for client in client_list if client.heterogeneity == heterogeneity_type]
-                train_loader, test_loader = centralize_data(client_of_type)
-                personalized_centralized_model = train_model(copy.deepcopy(model), train_loader, test_loader,centralized_model_epochs,learning_rate= lr ) 
-                test_central = test_model(personalized_centralized_model, test_loader)
-                print('personalized centralized model Accuracy with rotation ', heterogeneity_type)
-                print("Accuracy: {:.2f}%".format(test_central*100))
-                results[f'personalized central ({heterogeneity_type})'] = test_central*100
-                torch.save(personalized_centralized_model.state_dict(), f'./results/{output}_personalized_centralized_model_heterogeneity_{heterogeneity_type}_.pth')
-
-                # Federated Learning by heterogeneity 
-                print('personalized Federated')
-                hetero_server = copy.deepcopy(my_server)
-                fed_training_plan(hetero_server, client_of_type,federated_rounds, federated_local_epochs,lr)
-                test_federatedmodel = test_model(hetero_server.model, test_loader)
-                print(f'Federated model heterogeneity {heterogeneity_type} accuracy')
-                print("Accuracy: {:.2f}%".format(test_federatedmodel*100))
-                results[f'federated  {heterogeneity_type}'] = test_federatedmodel*100
-                torch.save(hetero_server.model.state_dict(), f'./results/{output}_Federated_model_heterogeneity_{heterogeneity_type}.pth')
-
-            # federated
-            fed_training_plan(my_server, client_list, federated_rounds, federated_local_epochs, lr)
-            train_loader, test_loader = centralize_data(client_list)
-            test_federatedmodel = test_model(my_server.model, test_loader)
-            print('Federated model accuracy')
-            print("Accuracy: {:.2f}%".format(test_federatedmodel*100))
-            results['federated'] = test_federatedmodel*100
-            clients_accs =[]
-            for client in client_list : 
-                acc = test_model(my_server.model, client.data_loader['test'])*100
-                clients_accs.append(acc)
-            results['federated std'] = np.std(clients_accs)
-            torch.save(my_server.model.state_dict(), f'./results/{output}_federated_model.pth')
-
-            print(results)
+    df_experiments = pd.read_csv("exp_configs.csv")
+    with open("out.log", "w") as sys.stdout:
+         
+        for i, row_exp in df_experiments.iterrows():
             
-            with open('./results/{}.json'.format(output), 'w+') as json_file:
-                json.dump(results, json_file, indent=4)
+            torch.manual_seed(row_exp['seed'])
+
+            with open("./results/{}.txt".format(row_exp['output']), 'w+') as f:
+                    
+                    model_server, list_clients  = setup_experiment(SimpleLinear(), row_exp)
+                    heterogeneity_types = set(client.heterogeneity_class for client in list_clients)
+                    
+                    run_central(list_clients, row_exp, df_experiments, i)
+                    run_federated(model_server, list_clients, row_exp, df_experiments, i)
+                                
+                    for heterogeneity_class in heterogeneity_types :
+                                        
+                        run_central_personalized_model(SimpleLinear(), list_clients, heterogeneity_class, row_exp, df_experiments,i)
+                        run_federated_personalized_model(model_server, list_clients, heterogeneity_class, row_exp, df_experiments, i)
+        
+        return df_experiments            
+            
+
+
+def run_central_personalized_model(model, list_clients, heterogeneity_class, row_exp, df_experiments, i):
+        
+
+        n_epochs_centralized = 2
+        output_name = row_exp['output']
+        # Centralized by heterogeneity
+        client_of_class = [client for client in list_clients if client.heterogeneity_class == heterogeneity_class]
+        train_loader, test_loader = centralize_data(client_of_class)
+
+        model_centralized_personalized = train_model(copy.deepcopy(model), train_loader, test_loader, n_epochs_centralized,learning_rate= 0.1) 
+        test_central_personalized = test_model(model_centralized_personalized, test_loader)
+
+        print('personalized centralized model Accuracy with rotation ', heterogeneity_class)
+        print("Accuracy: {:.2f}%".format(test_central_personalized*100))
+
+        torch.save(model_centralized_personalized.state_dict(), f'./results/{output_name}_personalized_centralized_model_heterogeneity_{heterogeneity_class}_.pth')
+        df_experiments[i, f'result_central_personalized_{heterogeneity_class}'] = test_central_personalized*100
+
+        return  df_experiments
+
+
+def run_federated_personalized_model(model_server, list_clients, heterogeneity_class, row_exp, df_experiments, i):
+
+    # Federated Learning by heterogeneity 
+    print('personalized Federated')
+    
+    model_server_het = copy.deepcopy(model_server)
+
+    output_name = row_exp['output']
+
+    fed_training_plan(model_server_het, list_clients, row_exp['federated_rounds'], row_exp['federated_local_epochs'], lr=0.1)
+    _, test_loader = centralize_data(list_clients)
+
+    test_federatedmodel = test_model(model_server_het.model, test_loader)
+    
+    print(f'Federated model heterogeneity {heterogeneity_class} accuracy')
+    print("Accuracy: {:.2f}%".format(test_federatedmodel*100))
+
+    df_experiments[i, f'result_federated_personalized_{heterogeneity_class}']  = test_federatedmodel*100
+    torch.save(model_server_het.model.state_dict(), f'./results/{output_name}_Federated_model_heterogeneity_{heterogeneity_class}.pth')
+
+    return df_experiments
+
+
+
+def run_federated(model_server, list_clients, row_exp, df_experiments, i):
+    
+    output_name = row_exp['output']
+    fed_training_plan(model_server, list_clients, row_exp['federated_rounds'], row_exp['federated_local_epochs'], lr=0.1)
+
+    _, test_loader = centralize_data(list_clients)
+    
+    test_federatedmodel = test_model(model_server.model, test_loader)
+
+    print('Federated model accuracy')
+    print("Accuracy: {:.2f}%".format(test_federatedmodel*100))
+    
+    df_experiments[i, f'result_federated_no_personalization'] = test_federatedmodel*100
+    
+    clients_accs =[]
+    
+    for client in list_clients : 
+        acc = test_model(model_server.model, client.data_loader['test'])*100
+        clients_accs.append(acc)
+
+    df_experiments[i, f'result_federated_std'] =  np.std(clients_accs)
+    
+    torch.save(model_server.model.state_dict(), f'./results/{output_name}_federated_model.pth')
+
+    return df_experiments
+
+
+
+def run_central(list_clients, row_exp, df_experiments, i):
+
+    print("Centralized results") 
+    output_name = row_exp['output']
+
+    model_central =  SimpleLinear()
+    train_loader, test_loader = centralize_data(list_clients)
+
+    train_model(model_central, train_loader = train_loader, test_loader = test_loader, 
+                num_epochs= 2, learning_rate= 0.1)
+    
+    test_central = test_model(model_central, test_loader = test_loader)
+
+
+    print('centralized model accuracy')
+    print("Accuracy: {:.2f}%".format(test_central*100))
+
+    torch.save(model_central.state_dict(), f'./results/{output_name}_model_central.pth')
+    df_experiments[i, 'result_central'] =  test_central*100 
+
+    return df_experiments
+    
+    
+
+if __name__ == "__main__":
+     run_experiments()
