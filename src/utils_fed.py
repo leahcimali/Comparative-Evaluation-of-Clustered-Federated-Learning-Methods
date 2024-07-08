@@ -75,40 +75,6 @@ def fedavg(my_server,client_list):
             else : 
                 print('No client in cluster ', cluster_id) 
 
-def fed_training_plan(my_server, client_list,rounds=3, epoch=200,lr =0.001):
-    """
-    Controler function to launch federated learning
-
-    Parameters
-    ----------
-    main_model:
-        Define the central node model :
-
-    data_dict : Dictionary
-    Contains training and validation data for the different FL nodes
-
-    rounds : int
-        Number of federated learning rounds
-
-    epoch : int
-        Number of training epochs in each round
-
-    model_path : str
-        Define the path where to save the models
-
-    """
-    from src.utils_training import train_model
-    for round in range(0, rounds):
-        print('Init round {} :'.format(round+1))
-        print('Sending Server model to clients !')
-        send_server_model_to_client(client_list, my_server)
-        for client in client_list:
-            print('Training local model for client {} !'.format(client.id))
-            client.model = train_model(client.model, client.data_loader['train'],client.data_loader['test'],epoch,lr)
-
-        print('Aggregating local models with FedAVG !')
-        fedavg(my_server, client_list)
-        print('Communication round {} completed !'.format(round+1))
 
 # FOR SERVER-SIDE CFL 
 def model_weight_matrix(client_list):
@@ -186,7 +152,7 @@ def k_means_clustering(client_list,number_of_clusters):
         
 
         
-def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clustering=3, round_after_clustering=3, epoch=10, number_of_clusters = 4,lr = 0.001):
+def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clustering=3, round_after_clustering=3, epochs=10, number_of_clusters = 4,lr = 0.001):
     """
     Controler function to launch federated learning
 
@@ -208,14 +174,14 @@ def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clust
         Define the path where to save the models
 
     """
-    from src.utils_training import train_model
+    from src.utils_training import train_central
     for round in range(0, rounds_before_clustering):
         print('Init round {} :'.format(round+1))
         print('Sending Server model to clients !')
         send_server_model_to_client(client_list, my_server)
         for client in client_list:
             print('Training local model for client {} !'.format(client.id))
-            client.model = train_model(client.model, client.data_loader['train'], client.data_loader['test'],epoch, learning_rate=lr)
+            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], num_epochs=epochs, learning_rate=lr)
         print('Aggregating local models with FedAVG !')
         fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))
@@ -229,7 +195,7 @@ def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clust
         send_server_model_to_client(client_list, my_server)
         for client in client_list:
             print('Training local model for client {} !'.format(client.id))
-            client.model = train_model(client.model, client.data_loader['train'], client.data_loader['test'], epoch, learning_rate=lr)
+            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], num_epochs=epochs, learning_rate=lr)
         print('Aggregating local models with FedAVG !')
         fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))
@@ -270,7 +236,7 @@ def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
         client.cluster_id = index_of_min_loss
 
         
-def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, number_of_clusters = 4,lr = 0.001,initcluster = True):
+def fed_training_plan_client_side(my_server, client_list,rounds=3, epochs=10, number_of_clusters = 4,lr = 0.001,initcluster = True):
     """
     Controler function to launch federated learning
 
@@ -292,8 +258,8 @@ def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, num
         Define the path where to save the models
 
     """
-    from src.utils_training import train_model
-    import numpy as np
+    from src.utils_training import train_central
+
     if initcluster == True : 
         init_server_cluster(my_server,client_list, number_of_clusters=number_of_clusters, seed = 0)
     for round in range(0, rounds):
@@ -301,7 +267,7 @@ def fed_training_plan_client_side(my_server, client_list,rounds=3, epoch=10, num
         set_client_cluster(my_server, client_list, number_of_clusters=number_of_clusters, epochs=10)
         for client in client_list:
             print('Training local model for client {} !'.format(client.id))
-            client.model = train_model(client.model, client.data_loader['train'], client.data_loader['test'],epoch,learning_rate=lr)
+            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], num_epochs=epochs,learning_rate=lr)
         print('Aggregating local models with FedAVG !')
         fedavg(my_server, client_list)
         print('Communication round {} completed !'.format(round+1))

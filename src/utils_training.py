@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.model_selection import train_test_split
+
 
 def lr_schedule(epoch,lr):
     decay_factor = 0.1
@@ -9,7 +9,63 @@ def lr_schedule(epoch,lr):
         return lr * decay_factor
     else:
         return lr
-def train_model(model, train_loader, test_loader, num_epochs=10, learning_rate=0.001, optimizer=optim.SGD, lr_scheduler=None):
+
+
+def train_model(model, train_loader = None, test_loader = None, list_clients= None, num_epochs=10, learning_rate=0.001, lr_scheduler=None):
+    
+    if not train_loader:
+        trained_obj = train_federated(model, list_clients = list_clients, rounds=3, epochs=num_epochs, lr = learning_rate)
+        trained_model = trained_obj.model
+    
+    else:
+        trained_model = train_central(model, train_loader, test_loader, num_epochs=num_epochs,
+                                       learning_rate = learning_rate)
+    
+    return trained_model
+
+
+
+
+def train_federated(my_server, list_clients, rounds=3, epochs=200,lr =0.001):
+    """
+    Controler function to launch federated learning
+
+    Parameters
+    ----------
+    main_model:
+        Define the central node model :
+
+    data_dict : Dictionary
+    Contains training and validation data for the different FL nodes
+
+    rounds : int
+        Number of federated learning rounds
+
+    epoch : int
+        Number of training epochs in each round
+
+    model_path : str
+        Define the path where to save the models
+
+    """
+    from src.utils_training import train_model
+    from src.utils_fed import send_server_model_to_client, fedavg
+    
+    for _ in range(0, rounds):
+
+        send_server_model_to_client(list_clients, my_server)
+        for client in list_clients:
+            client.model = train_central(client.model, client.data_loader['train'],client.data_loader['test'], epochs, lr)
+
+        fedavg(my_server, list_clients)
+
+    return my_server
+
+
+
+
+
+def train_central(model, train_loader, test_loader, num_epochs=10, learning_rate=0.001, optimizer=optim.SGD, lr_scheduler=None):
     criterion = nn.CrossEntropyLoss()
     optimizer = optimizer(model.parameters(), lr=learning_rate) 
     
