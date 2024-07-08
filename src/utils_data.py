@@ -1,6 +1,12 @@
 import torch
 import numpy as np
+
+from collections import Counter
+import pandas as pd
+import numpy as np
+
 from src.fedclass import Client, Server
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def shuffle(array,seed=42): 
@@ -289,6 +295,7 @@ def apply_features_skew(list_clients, row_exp) :
             data_preparation(client)
 
         list_clients[start_index:end_index] = list_clients_rotated
+    list_clients = list_clients[:end_index]
     return list_clients
 
 
@@ -322,10 +329,6 @@ def centralize_data(clientlist):
     test_loader = DataLoader(test_dataset, batch_size=64)
     return train_loader, test_loader
 
-from collections import Counter
-import pandas as pd
-import numpy as np
-from imblearn.datasets import make_imbalance
 
 
 def ratio_func(y, multiplier, minority_class):
