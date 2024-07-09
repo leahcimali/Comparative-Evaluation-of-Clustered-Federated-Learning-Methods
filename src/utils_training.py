@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+lr = 0.01
+
 
 def lr_schedule(epoch,lr):
     decay_factor = 0.1
@@ -11,22 +13,59 @@ def lr_schedule(epoch,lr):
         return lr
 
 
-def train_model(model, train_loader = None, test_loader = None, list_clients= None, num_epochs=10, learning_rate=0.001, lr_scheduler=None):
+
+def train_benchmark(list_clients, row_exp, i, main_model, training_type="centralized"):
+        
+        from src.utils_training import train_model
+        from src.utils_data import centralize_data
+        import copy
+
+
+        train_loader, test_loader = centralize_data(list_clients)
+    
+        if "federated" in training_type:
+            model_server = copy.deepcopy(main_model)
+            model_trained = train_model(model_server, None, None, list_clients, row_exp)
+        
+        else:
+            model_trained = train_model(main_model, train_loader, test_loader, list_clients, row_exp) 
+        
+        return model_trained, test_loader
+
+
+
+def test_benchmark(model_trained, list_clients, test_loader):    
+         
+        from src.utils_training import test_model
+        
+        clients_accs = []
+        model_tested = test_model(model_trained, test_loader)    
+
+        for client in list_clients : 
+            acc = test_model(model_trained, client.data_loader['test'])*100
+            clients_accs.append(acc)
+
+        return model_tested
+
+
+
+
+def train_model(model_server, train_loader, test_loader, list_clients, row_exp):
+#train_model(model, train_loader = None, test_loader = None, list_clients= None, num_epochs=10, learning_rate=0.001, lr_scheduler=None):
     
     if not train_loader:
-        trained_obj = train_federated(model, list_clients = list_clients, rounds=3, epochs=num_epochs, lr = learning_rate)
+        trained_obj = train_federated(model_server, list_clients, row_exp)
         trained_model = trained_obj.model
     
     else:
-        trained_model = train_central(model, train_loader, test_loader, num_epochs=num_epochs,
-                                       learning_rate = learning_rate)
+        trained_model = train_central(model_server, train_loader, test_loader, row_exp)
     
     return trained_model
 
 
 
 
-def train_federated(my_server, list_clients, rounds=3, epochs=200,lr =0.001):
+def train_federated(main_model, list_clients, row_exp):
     """
     Controler function to launch federated learning
 
@@ -34,43 +73,33 @@ def train_federated(my_server, list_clients, rounds=3, epochs=200,lr =0.001):
     ----------
     main_model:
         Define the central node model :
-
-    data_dict : Dictionary
-    Contains training and validation data for the different FL nodes
-
-    rounds : int
-        Number of federated learning rounds
-
-    epoch : int
-        Number of training epochs in each round
-
-    model_path : str
-        Define the path where to save the models
-
     """
-    from src.utils_training import train_model
+
     from src.utils_fed import send_server_model_to_client, fedavg
     
-    for _ in range(0, rounds):
+    for _ in range(0, row_exp['federated_rounds']):
 
-        send_server_model_to_client(list_clients, my_server)
+        send_server_model_to_client(list_clients, main_model)
+
         for client in list_clients:
-            client.model = train_central(client.model, client.data_loader['train'],client.data_loader['test'], epochs, lr)
+            client.model = train_central(client.model, client.data_loader['train'],client.data_loader['test'], row_exp)
 
-        fedavg(my_server, list_clients)
+        fedavg(main_model, list_clients)
 
-    return my_server
-
-
+    return main_model
 
 
 
-def train_central(model, train_loader, test_loader, num_epochs=10, learning_rate=0.001, optimizer=optim.SGD, lr_scheduler=None):
+
+
+def train_central(main_model, train_loader, test_loader, row_exp, lr_scheduler=None):
+
     criterion = nn.CrossEntropyLoss()
-    optimizer = optimizer(model.parameters(), lr=learning_rate) 
+    optimizer=optim.SGD
+    optimizer = optimizer(main_model.parameters(), lr=lr) 
     
-    for epoch in range(num_epochs):
-        model.train()  # Set the model to training mode
+    for epoch in range(row_exp['centralized_epochs']):
+        main_model.train()  # Set the model to training mode
         running_loss = 0.0
 
         # Apply learning rate decay if lr_scheduler is provided
@@ -81,7 +110,7 @@ def train_central(model, train_loader, test_loader, num_epochs=10, learning_rate
         # Iterate over the training dataset
         for inputs, labels in train_loader:
             optimizer.zero_grad()  # Zero the gradients
-            outputs = model(inputs)  # Forward pass
+            outputs = main_model(inputs)  # Forward pass
             loss = criterion(outputs, labels)  # Calculate the loss
             loss.backward()  # Backward pass
             optimizer.step()  # Update weights
@@ -92,7 +121,7 @@ def train_central(model, train_loader, test_loader, num_epochs=10, learning_rate
         epoch_loss = running_loss / len(train_loader.dataset)
 
         # Evaluate the model on the test set
-        model.eval()  # Set the model to evaluation mode
+        main_model.eval()  # Set the model to evaluation mode
         correct = 0
         total = 0
 
@@ -100,7 +129,7 @@ def train_central(model, train_loader, test_loader, num_epochs=10, learning_rate
         with torch.no_grad():
             # Iterate over the test dataset
             for inputs, labels in test_loader:
-                outputs = model(inputs)  # Forward pass
+                outputs = main_model(inputs)  # Forward pass
                 _, predicted = torch.max(outputs, 1)  # Get the predicted class
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
@@ -109,9 +138,9 @@ def train_central(model, train_loader, test_loader, num_epochs=10, learning_rate
         accuracy = correct / total
 
         # Print the loss and accuracy for each epoch
-        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}')
+        print(f"Epoch [{epoch+1}/{row_exp['centralized_epochs']}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}")
 
-    return model
+    return main_model
 
 def loss_calculation(model, train_loader): 
     import torch

@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from src.fedclass import Client, Server
-
+from src.models import SimpleLinear 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def shuffle(array,seed=42): 
@@ -34,14 +34,14 @@ def create_mnist_label_dict(seed = 42) :
         
     return label_dict
 
-def get_clients_data(number_of_clients, samples_by_client_of_each_labels, seed = 42):
+def get_clients_data(num_clients, num_samples_by_label, seed = 42):
     """
-    Distribute Mnist Dataset evenly accross number_of_clients clients
+    Distribute Mnist Dataset evenly accross num_clients clients
     ----------
-    number_of_clients : int
+    num_clients : int
         number of client of interest
         
-    samples_by_client_of_each_labels : int
+    num_samples_by_label : int
         number of samples of each labels by clients
     Returns
     -------
@@ -53,11 +53,11 @@ def get_clients_data(number_of_clients, samples_by_client_of_each_labels, seed =
     # Initialize dictionary to store client data
     clients_dictionary = {}
     client_dataset = {}
-    for client in range(number_of_clients):
+    for client in range(num_clients):
         clients_dictionary[client] = {}    
         for label in range(10):
-            clients_dictionary[client][label]= label_dict[label][client*samples_by_client_of_each_labels:(client+1)*samples_by_client_of_each_labels]
-    for client in range(number_of_clients):
+            clients_dictionary[client][label]= label_dict[label][client*num_samples_by_label:(client+1)*num_samples_by_label]
+    for client in range(num_clients):
         client_dataset[client] = {}    
         client_dataset[client]['x'] = np.concatenate([clients_dictionary[client][label] for label in range(10)], axis=0)
         client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
@@ -121,42 +121,43 @@ def mnist_dataset_heterogeneities(heterogeneity_type, exp_type):
 
 
 
-def setup_experiment(model, row_exp):
+def setup_experiment(row_exp, model=SimpleLinear()):
 
     list_clients = []
     model_server = Server(model)
 
-    dict_clients = get_clients_data(row_exp['number_of_clients'],
-                                    row_exp['number_of_samples_of_each_labels_by_clients'],
-                                     row_exp['seed'])    
+    dict_clients = get_clients_data(row_exp['num_clients'],
+                                    row_exp['num_samples_by_label'],
+                                    row_exp['seed'])    
     
-    for i in range(row_exp['number_of_clients']):
+    for i in range(row_exp['num_clients']):
         list_clients.append(Client(i, dict_clients[i]))
     
     list_clients = add_clients_heterogeneity(list_clients, row_exp)
+    list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
-    return model_server, list_clients
+    return model_server, list_clients, list_heterogeneities
 
 
 
 def add_clients_heterogeneity(list_clients, row_exp):
     
-    dict_params = mnist_dataset_heterogeneities(row_exp['heterogeneity'], row_exp['type'])
+    dict_params = mnist_dataset_heterogeneities(row_exp['heterogeneity_type'], row_exp['exp_type'])
 
-    if row_exp['heterogeneity']  == "concept_shift_on_features": # rotations?
+    if row_exp['heterogeneity_type']  == "concept_shift_on_features": # rotations?
         list_clients = apply_rotation(list_clients, row_exp)
     
-    elif row_exp['heterogeneity'] == "concept_shift_on_labels": #label swaps
+    elif row_exp['heterogeneity_type'] == "concept_shift_on_labels": #label swaps
         list_clients = apply_label_swap(list_clients, row_exp, dict_params['swaps'])
     
-    elif row_exp['heterogeneity'] == "quantity_skew":
+    elif row_exp['heterogeneity_type'] == "quantity_skew":
         list_clients = apply_quantity_skew(list_clients, row_exp, dict_params['skews'])
     
-    elif "labels_distribution_skew" in row_exp['heterogeneity']:
+    elif "labels_distribution_skew" in row_exp['heterogeneity_type']:
         list_clients = apply_labels_skew(list_clients, row_exp, dict_params['skews'],
                                           dict_params['ratios'])
     
-    elif row_exp['heterogeneity'] == "features_distribution_skew":
+    elif row_exp['heterogeneity_type'] == "features_distribution_skew":
         list_clients = apply_features_skew(list_clients, row_exp)
     
     return list_clients
@@ -166,9 +167,9 @@ def add_clients_heterogeneity(list_clients, row_exp):
 def apply_label_swap(list_clients, row_exp, list_swaps):
    
     n_swaps_types = 4
-    n_clients_by_swaps_type = row_exp['number_of_clients'] // n_swaps_types
+    n_clients_by_swaps_type = row_exp['num_clients'] // n_swaps_types
     
-    for i in range(row_exp['number_of_clusters']):
+    for i in range(row_exp['num_clusters']):
         
         start_index = i * n_clients_by_swaps_type
         end_index = (i + 1) * n_clients_by_swaps_type
@@ -191,7 +192,7 @@ def apply_rotation(list_clients, row_exp):
 
     # Apply rotation 0,90,180 and 270 to 1/4 of clients each
     n_rotation_types = 4
-    n_clients_by_rotation_type = row_exp['number_of_clients'] // n_rotation_types #TODO check edge cases where n_clients < n_rotation_types
+    n_clients_by_rotation_type = row_exp['num_clients'] // n_rotation_types #TODO check edge cases where n_clients < n_rotation_types
 
     for i in range(n_rotation_types):
         
@@ -213,7 +214,7 @@ def apply_rotation(list_clients, row_exp):
 def apply_labels_skew(list_clients, row_exp, list_skews, list_ratios):
     
     n_skews = len(list_skews)
-    n_clients_by_skew = row_exp['number_of_clients'] // n_skews 
+    n_clients_by_skew = row_exp['num_clients'] // n_skews 
 
     for i in range(n_skews):
 
@@ -242,7 +243,7 @@ def apply_quantity_skew(list_clients, row_exp, list_skews):
     n_max_samples = 100 # TODO: parameterize by dataset
 
     n_skews = len(list_skews)
-    n_clients_by_skew = row_exp['number_of_clients'] // n_skews  
+    n_clients_by_skew = row_exp['num_clients'] // n_skews  
 
     dict_clients = [get_clients_data(n_clients_by_skew,
                                     int(n_max_samples * skew)) 
@@ -271,7 +272,7 @@ def apply_features_skew(list_clients, row_exp) :
     # Setup server and clients for features distribution skew experiments
     
     n_skew_types = 3
-    n_clients_by_skew = row_exp['number_of_clients'] // n_skew_types  
+    n_clients_by_skew = row_exp['num_clients'] // n_skew_types  
     
     for i in range(n_skew_types):
 

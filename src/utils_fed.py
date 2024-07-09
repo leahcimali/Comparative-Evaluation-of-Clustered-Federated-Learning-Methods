@@ -77,7 +77,7 @@ def fedavg(my_server,client_list):
 
 
 # FOR SERVER-SIDE CFL 
-def model_weight_matrix(client_list):
+def model_weight_matrix(list_clients):
     import numpy as np
     import pandas as pd
     
@@ -85,15 +85,15 @@ def model_weight_matrix(client_list):
     Create a weight matrix DataFrame using the weights of local federated models
     Parameters
     ----------
-    model_dict: Dictionary
-        Contains all the federated system models
+    list_clients: List of Clients with respective models
+         all the federated system models
 
     Returns
     -------
     pd.DataFrame
         DataFrame with weights of each model as rows
     """
-    model_dict = {client.id : client.model for client in client_list}
+    model_dict = {client.id : client.model for client in list_clients}
     # Collect the shapes of the model parameters
     shapes = [param.data.numpy().shape for param in next(iter(model_dict.values())).parameters()]
 
@@ -110,6 +110,7 @@ def model_weight_matrix(client_list):
     weight_matrix = pd.DataFrame(weight_matrix_np, columns=[f'w_{i+1}' for i in range(weight_matrix_np.shape[1])])
 
     return weight_matrix
+
 
 def k_means_cluster_id(weight_matrix, k): 
     import pandas as pd
@@ -143,91 +144,71 @@ def k_means_cluster_id(weight_matrix, k):
     return clusters_identities
 
 
-def k_means_clustering(client_list,number_of_clusters): 
+def k_means_clustering(client_list,num_clusters): 
     import pickle
     weight_matrix = model_weight_matrix(client_list)
-    clusters_identities = k_means_cluster_id(weight_matrix, number_of_clusters)
+    clusters_identities = k_means_cluster_id(weight_matrix, num_clusters)
     for client in client_list : 
         setattr(client, 'cluster_id',clusters_identities[client.id])
         
 
         
-def fed_training_plan_on_shot_k_means(my_server, client_list,rounds_before_clustering=3, round_after_clustering=3, epochs=10, number_of_clusters = 4,lr = 0.001):
-    """
-    Controler function to launch federated learning
+def fed_training_plan_one_shot_k_means(model_server, list_clients, row_exp):
 
-    Parameters
-    ----------
-    main_model:
-        Define the central node model :
-
-    data_dict : Dictionary
-    Contains training and validation data for the different FL nodes
-
-    rounds : int
-        Number of federated learning rounds
-
-    epoch : int
-        Number of training epochs in each round
-
-    model_path : str
-        Define the path where to save the models
-
-    """
     from src.utils_training import train_central
-    for round in range(0, rounds_before_clustering):
-        print('Init round {} :'.format(round+1))
-        print('Sending Server model to clients !')
-        send_server_model_to_client(client_list, my_server)
-        for client in client_list:
-            print('Training local model for client {} !'.format(client.id))
-            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], num_epochs=epochs, learning_rate=lr)
-        print('Aggregating local models with FedAVG !')
-        fedavg(my_server, client_list)
-        print('Communication round {} completed !'.format(round+1))
-    print('Starting clustering')
-    setattr(my_server,'num_clusters',number_of_clusters)
-    my_server.clusters_models= {cluster_id: copy.deepcopy(my_server.model) for cluster_id in range(number_of_clusters)}
-    k_means_clustering(client_list,number_of_clusters)
-    for rounds in range(rounds_before_clustering, rounds_before_clustering + round_after_clustering) :
-        print('Init round {} :'.format(round+1))
-        print('Sending Server models to clients !')
-        send_server_model_to_client(client_list, my_server)
-        for client in client_list:
-            print('Training local model for client {} !'.format(client.id))
-            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], num_epochs=epochs, learning_rate=lr)
-        print('Aggregating local models with FedAVG !')
-        fedavg(my_server, client_list)
-        print('Communication round {} completed !'.format(round+1))
-    '''
-    if need of saving models 
-    for cluster_id in range(4): 
-        torch.save(my_server.clusters_models[cluster_id].state_dict(), 'model_{}.pth'.format(cluster_id))
-    '''    
+    
+    lr = 0.01
+
+    for _ in range(0, row_exp['federated_rounds']):
+
+        send_server_model_to_client(list_clients, model_server)
+
+        for client in list_clients:
+
+            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
+
+        fedavg(model_server, list_clients)
+
+    setattr(model_server,'num_clusters', row_exp['num_clusters'])
+    
+    model_server.clusters_models= {cluster_id: copy.deepcopy(model_server.model) for cluster_id in range(row_exp['num_clusters'])}
+    
+    k_means_clustering(list_clients, row_exp['num_clusters'])
+
+    
+    # Rounds after clustering
+    send_server_model_to_client(list_clients, model_server)
+    
+    for client in list_clients:
+    
+        client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
+        
+        fedavg(model_server, list_clients)
+    
 
 
 # FOR CLIENT-SIDE CFL 
 
-def init_server_cluster(my_server,client_list, number_of_clusters, seed = 0):
+def init_server_cluster(my_server,client_list, num_clusters, seed = 0):
     # Set client to random cluster for first round. Used for client_side CFL 
     from src.models import SimpleLinear
     from src.utils_training import loss_calculation
     import numpy as np
-    my_server.num_clusters = number_of_clusters
+    my_server.num_clusters = num_clusters
     torch.manual_seed(seed)
-    my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(number_of_clusters)} 
+    my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(num_clusters)} 
     for client in client_list:
-        client.cluster_id = np.random.randint(0,number_of_clusters)
+        client.cluster_id = np.random.randint(0,num_clusters)
         
             
-def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
+def set_client_cluster(my_server,client_list,num_clusters=4,epochs=10):
     # Use the loss to calculate the cluster membership for client-side CFL
     from src.utils_training import loss_calculation
     import numpy as np
     for client in client_list:
         print('Calculating all cluster model loss on local data for client {} !'.format(client.id))
         cluster_losses = []
-        for cluster_id in range(number_of_clusters):
+        for cluster_id in range(num_clusters):
             cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
             cluster_losses.append(cluster_loss)
         index_of_min_loss = np.argmin(cluster_losses)
@@ -236,40 +217,22 @@ def set_client_cluster(my_server,client_list,number_of_clusters=4,epochs=10):
         client.cluster_id = index_of_min_loss
 
         
-def fed_training_plan_client_side(my_server, client_list,rounds=3, epochs=10, number_of_clusters = 4,lr = 0.001,initcluster = True):
-    """
-    Controler function to launch federated learning
+def fed_training_plan_client_side(model_server, list_clients, row_exp, init_cluster=True):
 
-    Parameters
-    ----------
-    main_model:
-        Define the central node model :
-
-    data_dict : Dictionary
-    Contains training and validation data for the different FL nodes
-
-    rounds : int
-        Number of federated learning rounds
-
-    epoch : int
-        Number of training epochs in each round
-
-    model_path : str.
-        Define the path where to save the models
-
-    """
     from src.utils_training import train_central
 
-    if initcluster == True : 
-        init_server_cluster(my_server,client_list, number_of_clusters=number_of_clusters, seed = 0)
-    for round in range(0, rounds):
-        print('Init round {} :'.format(round+1))
-        set_client_cluster(my_server, client_list, number_of_clusters=number_of_clusters, epochs=10)
-        for client in client_list:
-            print('Training local model for client {} !'.format(client.id))
-            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], num_epochs=epochs,learning_rate=lr)
-        print('Aggregating local models with FedAVG !')
-        fedavg(my_server, client_list)
-        print('Communication round {} completed !'.format(round+1))
+    if init_cluster == True : 
+        init_server_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['seed'])
+    
+    for _ in range(row_exp['federated_rounds']):
+
+        set_client_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['federated_local_epochs'])
+        
+        for client in list_clients:
+
+            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
+
+        fedavg(model_server, list_clients)
+
     
     

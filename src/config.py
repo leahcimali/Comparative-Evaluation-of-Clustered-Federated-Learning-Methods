@@ -10,8 +10,8 @@ class Params():
         with open(config_file_path) as f:
             config = json.load(f)
             self.seed = config['seed']
-            self.number_of_clients = config['number_of_clients']
-            self.number_of_samples_of_each_labels_by_clients = config['number_of_samples_of_each_labels_by_clients']
+            self.num_clients = config['num_clients']
+            self.num_samples_by_label = config['num_samples_by_label']
             self.centralized_model_epochs = config['centralized_model_epochs']
             self.federated_rounds = config['federated_rounds']
             self.federated_local_epochs = config['federated_local_epochs']
