@@ -101,7 +101,7 @@ def model_weight_matrix(list_clients):
     weight_matrix_np = np.empty((len(model_dict), sum(np.prod(shape) for shape in shapes)))
 
     # Iterate through the keys of model_dict
-    for idx, (model_num, model) in enumerate(model_dict.items()):
+    for idx, (_, model) in enumerate(model_dict.items()):
         # Extract model weights and flatten
         model_weights = np.concatenate([param.data.numpy().flatten() for param in model.parameters()])
         weight_matrix_np[idx, :] = model_weights
@@ -152,40 +152,6 @@ def k_means_clustering(client_list,num_clusters):
         setattr(client, 'cluster_id',clusters_identities[client.id])
         
 
-        
-def fed_training_plan_one_shot_k_means(model_server, list_clients, row_exp):
-
-    from src.utils_training import train_central
-    
-    lr = 0.01
-
-    for _ in range(0, row_exp['federated_rounds']):
-
-        send_server_model_to_client(list_clients, model_server)
-
-        for client in list_clients:
-
-            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
-
-        fedavg(model_server, list_clients)
-
-    setattr(model_server,'num_clusters', row_exp['num_clusters'])
-    
-    model_server.clusters_models= {cluster_id: copy.deepcopy(model_server.model) for cluster_id in range(row_exp['num_clusters'])}
-    
-    k_means_clustering(list_clients, row_exp['num_clusters'])
-
-    
-    # Rounds after clustering
-    send_server_model_to_client(list_clients, model_server)
-    
-    for client in list_clients:
-    
-        client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
-        
-        fedavg(model_server, list_clients)
-    
-
 
 # FOR CLIENT-SIDE CFL 
 
@@ -216,23 +182,4 @@ def set_client_cluster(my_server,client_list,num_clusters=4,epochs=10):
         client.model = copy.deepcopy(my_server.clusters_models[index_of_min_loss])
         client.cluster_id = index_of_min_loss
 
-        
-def fed_training_plan_client_side(model_server, list_clients, row_exp, init_cluster=True):
-
-    from src.utils_training import train_central
-
-    if init_cluster == True : 
-        init_server_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['seed'])
-    
-    for _ in range(row_exp['federated_rounds']):
-
-        set_client_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['federated_local_epochs'])
-        
-        for client in list_clients:
-
-            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
-
-        fedavg(model_server, list_clients)
-
-    
     

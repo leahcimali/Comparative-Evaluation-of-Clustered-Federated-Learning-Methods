@@ -459,3 +459,14 @@ def erode_images(x_train, kernel_size=(3, 3)):
 
     return eroded_images
 
+
+    
+def save_results(model_server, row_exp):
+    
+    import torch
+
+    if row_exp['exp_type'] == "client" or "server":
+        for cluster_id in range(row_exp['num_clusters']): 
+            torch.save(model_server.clusters_models[cluster_id].state_dict(), f"./results/{row_exp['output']}_{row_exp['exp_type']}_model_cluster_{cluster_id}.pth")
+
+    return 

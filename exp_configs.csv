@@ -1,7 +1,7 @@
 exp_type,heterogeneity_type,num_clients,num_samples_by_label,num_clusters,centralized_epochs,federated_rounds,federated_local_epochs,output,seed
 server,features_distribution_skew,8,30,4,3,3,10,feature_skew_central,42
 client,features_distribution_skew,8,30,3,3,3,10,feature_distribution_skew_client480,42
-central,concept_shift_on_features,8,30,4,3,3,10,concept_shift_on_features_central48,42
+benchmark,concept_shift_on_features,8,30,4,3,3,10,concept_shift_on_features_benchmark48,42
 server,features_distribution_skew,8,30,4,3,3,10,feature_skew_central,42
 server,concept_shift_on_features,8,30,4,3,3,10,concept_shift_on_features_server48,42
 server,concept_shift_on_labels,8,30,6,3,3,10,concept_shift_on_labels_server48,42
@@ -43,4 +43,4 @@ client,labels_distribution_skew,8,30,4,3,3,10,labels_distribution_skew_client480
 client,labels_distribution_skew_balancing,8,30,4,3,3,10,labels_distribution_skew_balancing_client480,42
 client,labels_distribution_skew_upsampled,8,30,4,3,3,10,labels_distribution_skew_upsampled_client480,42
 client,features_distribution_skew,8,30,3,3,3,10,feature_distribution_skew_client480,42
-central,concept_shift_on_features,8,30,4,3,3,10,concept_shift_on_features_central48,42
+benchmark,concept_shift_on_features,8,30,4,3,3,10,concept_shift_on_features_benchmark48,42

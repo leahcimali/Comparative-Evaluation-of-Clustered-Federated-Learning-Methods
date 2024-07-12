@@ -13,6 +13,63 @@ def lr_schedule(epoch,lr):
         return lr
 
 
+def run_cfl_server_side(model_server, list_clients, row_exp):
+
+    from src.utils_fed import k_means_clustering
+    from src.metrics import report_CFL
+    import copy
+    
+    model_server = train_federated(model_server, list_clients, row_exp)
+    
+    model_server.clusters_models= {cluster_id: copy.deepcopy(model_server.model) for cluster_id in range(row_exp['num_clusters'])}
+    
+    setattr(model_server, 'num_clusters', row_exp['num_clusters'])
+
+    k_means_clustering(list_clients, row_exp['num_clusters'])
+
+    model_server = train_federated(model_server, list_clients, row_exp)
+
+    results = report_CFL(model_server, list_clients, row_exp)
+    return results
+
+    
+def run_cfl_client_side(model_server, list_clients, row_exp, init_cluster=True):
+
+    from src.utils_fed import init_server_cluster, set_client_cluster, fedavg
+    from src.metrics import report_CFL
+
+    if init_cluster == True : 
+        init_server_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['seed'])
+    
+    for _ in range(row_exp['federated_rounds']):
+
+        set_client_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['federated_local_epochs'])
+        
+        for client in list_clients:
+
+            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
+
+        fedavg(model_server, list_clients)
+    
+    results = report_CFL(model_server, list_clients, row_exp)
+    return results
+    
+
+def run_benchmark(list_clients, row_exp, i, main_model = None, training_type="centralized"):
+    
+    from src.models import SimpleLinear 
+    
+    if not main_model:
+         main_model = SimpleLinear()
+    
+    model_server, test_loader = train_benchmark(list_clients, row_exp, i, main_model, training_type)
+
+    test_benchmark(model_server, list_clients, test_loader)
+
+    #save_results(model_server, list_clients, row_exp)
+
+    return
+
 
 def train_benchmark(list_clients, row_exp, i, main_model, training_type="centralized"):
         
