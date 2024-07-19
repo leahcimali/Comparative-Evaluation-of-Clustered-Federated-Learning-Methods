@@ -24,7 +24,7 @@ def create_mnist_label_dict(seed = 42) :
     from tensorflow.keras.datasets import mnist
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-# Seperating Mnist by labels
+    # Seperating Mnist by labels
     label_dict = {}
     for label in range(10):
         label_indices = np.where(y_train == label)[0]
@@ -63,10 +63,10 @@ def get_clients_data(num_clients, num_samples_by_label, seed = 42):
         client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
     return client_dataset
 
-def rotate_images(client, rotation, heterogeneity_class):
+def rotate_images(client, rotation):
     # Rotate images, used of concept shift on features
     images = client.data['x']
-    setattr(client,'heterogeneity_class', heterogeneity_class)
+    
     if rotation >0 :
         rotated_images = []
         for img in images:
@@ -77,7 +77,7 @@ def rotate_images(client, rotation, heterogeneity_class):
 def data_preparation(client):
     # Train test split of a client's data and create onf dataloaders for local model training
     from sklearn.model_selection import train_test_split
-    from torch.utils.data import DataLoader, Dataset,TensorDataset
+    from torch.utils.data import DataLoader, TensorDataset
     x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=42,stratify=client.data['y'])
     x_train, x_test = x_train/255.0 , x_test/255.0
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
@@ -105,7 +105,7 @@ def mnist_dataset_heterogeneities(heterogeneity_type, exp_type):
         dict_params['skews'] = [[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]]
         dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]]
         
-    elif heterogeneity_type == 'labels_distribution_skew_upsampled':
+    elif heterogeneity_type == 'labels_distribution_skew_downsampled':
         dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
         dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
                                [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
@@ -134,6 +134,7 @@ def setup_experiment(row_exp, model=SimpleLinear()):
         list_clients.append(Client(i, dict_clients[i]))
     
     list_clients = add_clients_heterogeneity(list_clients, row_exp)
+    
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
     return model_server, list_clients, list_heterogeneities
@@ -166,10 +167,10 @@ def add_clients_heterogeneity(list_clients, row_exp):
 
 def apply_label_swap(list_clients, row_exp, list_swaps):
    
-    n_swaps_types = 4
+    n_swaps_types = len(list_swaps)
     n_clients_by_swaps_type = row_exp['num_clients'] // n_swaps_types
     
-    for i in range(row_exp['num_clusters']):
+    for i in range(n_swaps_types):
         
         start_index = i * n_clients_by_swaps_type
         end_index = (i + 1) * n_clients_by_swaps_type
@@ -202,8 +203,14 @@ def apply_rotation(list_clients, row_exp):
         list_clients_rotated = list_clients[start_index:end_index]
 
         for client in list_clients_rotated:
-            rotate_images(client , 90 * i, str(i))
+
+            rotation_angle = (360 // n_rotation_types) * i
+
+            rotate_images(client , rotation_angle)
+            
             data_preparation(client)
+            
+            setattr(client,'heterogeneity_class', f"rot_{rotation_angle}")
 
         list_clients[start_index:end_index] = list_clients_rotated
 
@@ -224,8 +231,12 @@ def apply_labels_skew(list_clients, row_exp, list_skews, list_ratios):
         list_clients_skewed = list_clients[start_index:end_index]
 
         for client in list_clients_skewed:
-            unbalancing(client, list_skews[i], list_ratios[i], str(i))
+            
+            unbalancing(client, list_skews[i], list_ratios[i])
+            
             data_preparation(client)
+
+            setattr(client,'heterogeneity_class', f"lbl_skew_{str(i)}")
 
         list_clients[start_index:end_index] = list_clients_skewed
     
@@ -296,7 +307,9 @@ def apply_features_skew(list_clients, row_exp) :
             data_preparation(client)
 
         list_clients[start_index:end_index] = list_clients_rotated
+    
     list_clients = list_clients[:end_index]
+
     return list_clients
 
 
@@ -337,13 +350,15 @@ def ratio_func(y, multiplier, minority_class):
     target_stats = Counter(y)
     return {minority_class: int(multiplier * target_stats[minority_class])}
 
-def unbalancing(client,labels_list ,ratio_list, heterogeneity_class):
+def unbalancing(client,labels_list ,ratio_list):
     # downsample the dataset of a client with each elements of the labels_list will be downsample with the corresponding ration of ratio_list
     from imblearn.datasets import make_imbalance
     x_train = client.data['x']
     y_train = client.data['y']
-    X_resampled = x_train.reshape(-1, 784) # flatten the images 
+    (nsamples, i_dim,j_dim) = x_train.shape
+    X_resampled = x_train.reshape(-1, i_dim * j_dim) # flatten the images 
     y_resampled = y_train
+    
     for i in range(len(labels_list)):
         X = pd.DataFrame(X_resampled)
         X_resampled, y_resampled = make_imbalance(X,
@@ -352,9 +367,9 @@ def unbalancing(client,labels_list ,ratio_list, heterogeneity_class):
                 **{"multiplier": ratio_list[i], "minority_class": labels_list[i]})
 
     ### unflatten the images 
-    client.data['x'] = X_resampled.to_numpy().reshape(-1,28,28)
+    client.data['x'] = X_resampled.to_numpy().reshape(-1, i_dim, j_dim)
     client.data['y'] = y_resampled
-    setattr(client,'heterogeneity_class', heterogeneity_class)
+    
     return client
 
 
@@ -362,7 +377,7 @@ def load_users_data(directory, number_of_users, seed = 42):
     import os
     import json
     import random
-    import numpy as np
+
     """
     Loads n = number_of_users random JSON users_datas from the specified directory.
 
@@ -460,7 +475,7 @@ def erode_images(x_train, kernel_size=(3, 3)):
     return eroded_images
 
 
-    
+
 def save_results(model_server, row_exp):
     
     import torch

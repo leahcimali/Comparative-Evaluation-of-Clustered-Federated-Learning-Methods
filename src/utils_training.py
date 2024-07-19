@@ -29,6 +29,8 @@ def run_cfl_server_side(model_server, list_clients, row_exp):
 
     model_server = train_federated(model_server, list_clients, row_exp)
 
+    print('Terminated server-side clustering')
+
     results = report_CFL(model_server, list_clients, row_exp)
     return results
 
@@ -39,86 +41,116 @@ def run_cfl_client_side(model_server, list_clients, row_exp, init_cluster=True):
     from src.metrics import report_CFL
 
     if init_cluster == True : 
-        init_server_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['seed'])
-    
-    for _ in range(row_exp['federated_rounds']):
-
-        set_client_cluster(model_server, list_clients, row_exp['num_clusters'], row_exp['federated_local_epochs'])
         
+        init_server_cluster(model_server, list_clients, row_exp, p_expert_opinion=0.8)
+
+    print({c:{h:n
+            for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
+              for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
+                for c in range(row_exp['num_clusters'])})    
+    
+    for round in range(row_exp['federated_rounds']):
+
         for client in list_clients:
 
-            client.model = train_central(client.model, client.data_loader['train'], client.data_loader['test'], row_exp)
+            client.model = train_central(client.model, client.data_loader['train'], row_exp)
 
         fedavg(model_server, list_clients)
-    
+        
+        set_client_cluster(model_server, list_clients, row_exp['num_clusters'])
+
+        #print([c.cluster_id for c in list_clients])
+
+        print({c:{h:n
+            for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
+              for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
+                for c in range(row_exp['num_clusters'])})
+
+        print(f'Terminated round {round} of client-side clustering')
+
     results = report_CFL(model_server, list_clients, row_exp)
     return results
     
 
-def run_benchmark(list_clients, row_exp, i, main_model = None, training_type="centralized"):
+def run_benchmark(list_clients, row_exp, df_results, main_model = None, write_results = False, training_type="centralized"):
     
-    from src.models import SimpleLinear 
-    
+    from src.models import SimpleLinear
+
     if not main_model:
          main_model = SimpleLinear()
     
-    model_server, test_loader = train_benchmark(list_clients, row_exp, i, main_model, training_type)
+    model_server, test_loader = train_benchmark(list_clients, row_exp, main_model, training_type)
 
-    test_benchmark(model_server, list_clients, test_loader)
+    df_results = test_benchmark(model_server, list_clients, test_loader, row_exp, df_results, training_type)
 
-    #save_results(model_server, list_clients, row_exp)
+    if write_results:
+        df_results.to_csv(path_or_buf="test.csv")
 
-    return
+    return df_results
 
-
-def train_benchmark(list_clients, row_exp, i, main_model, training_type="centralized"):
+def train_benchmark(list_clients, row_exp, main_model, training_type="centralized"):
         
         from src.utils_training import train_model
         from src.utils_data import centralize_data
         import copy
 
-
         train_loader, test_loader = centralize_data(list_clients)
     
         if "federated" in training_type:
             model_server = copy.deepcopy(main_model)
-            model_trained = train_model(model_server, None, None, list_clients, row_exp)
+            model_trained = train_model(model_server, None, list_clients, row_exp)
         
         else:
-            model_trained = train_model(main_model, train_loader, test_loader, list_clients, row_exp) 
+            model_trained = train_model(main_model, train_loader, list_clients, row_exp) 
         
         return model_trained, test_loader
 
 
 
-def test_benchmark(model_trained, list_clients, test_loader):    
+def test_benchmark(model_trained, list_clients, test_loader, row_exp, df_results, training_type):    
          
-        from src.utils_training import test_model
+    from src.utils_training import test_model
+    import pandas as pd
+    import numpy as np
+    
+    #'exp_type', 'training_type', 'heterogeneity_type', 'model_type', 'heterogeneity_class', 'accuracy'
+    
+    dict_results = {'exp_type': row_exp['exp_type'],
+                    'training_type': training_type,
+                    'heterogeneity_type': row_exp['heterogeneity_type'],
+                    'model_type': 'central', 
+                    'heterogeneity_class': np.nan,
+                    'accuracy': test_model(model_trained, test_loader) 
+                    }
+
+    df_results = pd.concat([df_results, pd.DataFrame([dict_results])], ignore_index = True)
+
+    for client in list_clients : 
         
-        clients_accs = []
-        model_tested = test_model(model_trained, test_loader)    
+        dict_results = {'exp_type': row_exp['exp_type'],
+                        'training_type': training_type,
+                        'heterogeneity_type': row_exp['heterogeneity_type'],
+                        'model_type': 'client' + str(client.id) , 
+                        'heterogeneity_class': client.heterogeneity_class,
+                        'accuracy': test_model(model_trained, client.data_loader['test'])*100
+                        }
 
-        for client in list_clients : 
-            acc = test_model(model_trained, client.data_loader['test'])*100
-            clients_accs.append(acc)
-
-        return model_tested
+        df_results = pd.concat([df_results, pd.DataFrame([dict_results])], ignore_index = True)
+    
+    return df_results
 
 
 
-
-def train_model(model_server, train_loader, test_loader, list_clients, row_exp):
-#train_model(model, train_loader = None, test_loader = None, list_clients= None, num_epochs=10, learning_rate=0.001, lr_scheduler=None):
+def train_model(model_server, train_loader, list_clients, row_exp):
     
     if not train_loader:
         trained_obj = train_federated(model_server, list_clients, row_exp)
         trained_model = trained_obj.model
     
     else:
-        trained_model = train_central(model_server, train_loader, test_loader, row_exp)
+        trained_model = train_central(model_server, train_loader, row_exp)
     
     return trained_model
-
 
 
 
@@ -139,17 +171,14 @@ def train_federated(main_model, list_clients, row_exp):
         send_server_model_to_client(list_clients, main_model)
 
         for client in list_clients:
-            client.model = train_central(client.model, client.data_loader['train'],client.data_loader['test'], row_exp)
+            client.model = train_central(client.model, client.data_loader['train'], row_exp)
 
         fedavg(main_model, list_clients)
 
     return main_model
 
 
-
-
-
-def train_central(main_model, train_loader, test_loader, row_exp, lr_scheduler=None):
+def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
 
     criterion = nn.CrossEntropyLoss()
     optimizer=optim.SGD
@@ -174,29 +203,8 @@ def train_central(main_model, train_loader, test_loader, row_exp, lr_scheduler=N
 
             running_loss += loss.item() * inputs.size(0)
 
-        # Calculate average training loss for the epoch
-        epoch_loss = running_loss / len(train_loader.dataset)
-
-        # Evaluate the model on the test set
         main_model.eval()  # Set the model to evaluation mode
-        correct = 0
-        total = 0
-
-        # Disable gradient calculation for evaluation
-        with torch.no_grad():
-            # Iterate over the test dataset
-            for inputs, labels in test_loader:
-                outputs = main_model(inputs)  # Forward pass
-                _, predicted = torch.max(outputs, 1)  # Get the predicted class
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-        # Calculate accuracy on the test set
-        accuracy = correct / total
-
-        # Print the loss and accuracy for each epoch
-        print(f"Epoch [{epoch+1}/{row_exp['centralized_epochs']}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2%}")
-
+  
     return main_model
 
 def loss_calculation(model, train_loader): 

@@ -94,7 +94,7 @@ def load_data(results_dir: Path):
             df_results.append(df_clusters)
     
     return df_results
-            # execute analyses
+
 
 def get_clusters(df):
     
@@ -113,9 +113,31 @@ def get_clusters(df):
                 list_clusters.append(col_name.split('.')[0])
         
         list_clusters = list(set(list_clusters))
+
         list_clusters = [x.split(' ')[1] for x in list_clusters]
 
+    list_clusters = append_empty_clusters(list_clusters)
+
     return list_clusters
+
+
+def append_empty_clusters(list_clusters):
+    """
+    Handle the situation where some clusters are empty by appending the clusters ID
+    """
+
+    list_clusters_int = [int(x) for x in list_clusters]
+    
+    max_clusters = max(list_clusters_int)
+    
+    for i in range(max_clusters + 1):
+        
+        if i not in list_clusters_int:
+            
+            list_clusters.append(str(i))
+
+    return list_clusters
+
 
 
 def replace_by_occurence(labels_list, ref_list):
@@ -150,7 +172,7 @@ def histogram_clusters_dist(df_clusters: DataFrame):
 
     bar_width = bar_depth = 0.5
 
-    n_clusters = len(get_clusters(df_clusters))
+    n_clusters =  len(get_clusters(df_clusters))
     n_heterogeneities = len(labels_heterogeneity)
 
     # bar coordinates lists

@@ -64,17 +64,19 @@ def fedavg(my_server,client_list):
     if my_server.num_clusters == None:
         # Initialize a new model
         my_server.model = model_avg(client_list)
+    
     else : 
+         
          for cluster_id in range(my_server.num_clusters):
-            print('FedAVG on cluster {}!'.format(cluster_id))
+          
             # Filter clients belonging to the current cluster
+            
             cluster_client_list = [client for client in client_list if client.cluster_id == cluster_id]
+            
             if len(cluster_client_list)>0 :  
-                print('Number of clients in cluster {}: {}'.format(cluster_id, len(cluster_client_list)))
+          
                 my_server.clusters_models[cluster_id] = model_avg(cluster_client_list)
-            else : 
-                print('No client in cluster ', cluster_id) 
-
+            
 
 # FOR SERVER-SIDE CFL 
 def model_weight_matrix(list_clients):
@@ -155,31 +157,62 @@ def k_means_clustering(client_list,num_clusters):
 
 # FOR CLIENT-SIDE CFL 
 
-def init_server_cluster(my_server,client_list, num_clusters, seed = 0):
-    # Set client to random cluster for first round. Used for client_side CFL 
+def init_server_cluster(my_server,client_list, row_exp, p_expert_opinion=None):
+    
+    """
+    Assign clients to initial clusters using a given distribution or completely at random. 
+    """
+    
     from src.models import SimpleLinear
-    from src.utils_training import loss_calculation
     import numpy as np
-    my_server.num_clusters = num_clusters
-    torch.manual_seed(seed)
-    my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(num_clusters)} 
-    for client in client_list:
-        client.cluster_id = np.random.randint(0,num_clusters)
-        
-            
-def set_client_cluster(my_server,client_list,num_clusters=4,epochs=10):
-    # Use the loss to calculate the cluster membership for client-side CFL
-    from src.utils_training import loss_calculation
-    import numpy as np
-    for client in client_list:
-        print('Calculating all cluster model loss on local data for client {} !'.format(client.id))
-        cluster_losses = []
-        for cluster_id in range(num_clusters):
-            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
-            cluster_losses.append(cluster_loss)
-        index_of_min_loss = np.argmin(cluster_losses)
-        print('Best loss with cluster model {}'.format(index_of_min_loss))
-        client.model = copy.deepcopy(my_server.clusters_models[index_of_min_loss])
-        client.cluster_id = index_of_min_loss
+    torch.manual_seed(row_exp['seed'])
 
+    list_heterogeneities = list(set([c.heterogeneity_class for c in client_list]))
+
+    if not p_expert_opinion:
+
+        p_expert_opinion = 1 / row_exp['num_clusters']
+        
+    p_rest = (1 - p_expert_opinion) / (row_exp['num_clusters'] - 1)
+
+    my_server.num_clusters = row_exp['num_clusters']
+        
+    my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(row_exp['num_clusters'])} 
+    
+    for client in client_list:
+    
+        probs = [p_rest if x != list_heterogeneities.index(client.heterogeneity_class) % row_exp['num_clusters']
+                        else p_expert_opinion for x in range(row_exp['num_clusters'])] 
+
+        client.cluster_id = np.random.choice(range(row_exp['num_clusters']), p = probs)
+
+        client.model = copy.deepcopy(my_server.clusters_models[client.cluster_id])
+    
+
+
+def set_client_cluster(my_server, client_list, num_clusters):
+    """
+    Use the loss to calculate the cluster membership for client-side CFL
+    """
+    
+    from src.utils_training import loss_calculation
+    import numpy as np
+    
+    for client in client_list:
+        
+        cluster_losses = []
+        
+        for cluster_id in range(num_clusters):
+        
+            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
+        
+            cluster_losses.append(cluster_loss)
+        
+        index_of_min_loss = np.argmin(cluster_losses)
+        
+        #print(f"client {client.id} with heterogeneity {client.heterogeneity_class} cluster losses:", cluster_losses)
+
+        client.model = copy.deepcopy(my_server.clusters_models[index_of_min_loss])
+    
+        client.cluster_id = index_of_min_loss
     
