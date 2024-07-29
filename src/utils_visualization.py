@@ -85,7 +85,9 @@ def load_data(results_dir: Path):
     
     for _, row_exp in df_experiments.iterrows():
 
-        file_path = results_dir / Path(row_exp['output'] + ".json")
+        output_name =  row_exp.to_string(header=False, index=False, name=False).replace(' ', "").replace('\n','_')
+
+        file_path = results_dir / Path(output_name + ".json")
         
         if file_path.exists():
             
@@ -204,6 +206,8 @@ def histogram_clusters_dist(df_clusters: DataFrame):
     colors = [cmap(i) for i in np.linspace(0, 1, len(x_heterogeneities))]
 
     ax.bar3d(x_heterogeneities,y_clusters,z,dx,dy,dz_nclients, color=[colors[i] for i in x_heterogeneities])
+    
+    plt.title(df_clusters.iloc[0]['filename'], fontdict=None, loc='center', pad=None)
     plt.show()
 
 

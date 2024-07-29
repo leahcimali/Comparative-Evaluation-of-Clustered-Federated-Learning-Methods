@@ -94,7 +94,7 @@ def data_preparation(client):
 
 
 def mnist_dataset_heterogeneities(heterogeneity_type, exp_type):
-    
+
     dict_params = {}
 
     if heterogeneity_type == "labels_distribution_skew":
@@ -137,7 +137,9 @@ def setup_experiment(row_exp, model=SimpleLinear()):
     
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
-    return model_server, list_clients, list_heterogeneities
+    output_name =  row_exp.to_string(header=False, index=False, name=False).replace(' ', "").replace('\n','_')
+
+    return model_server, list_clients, list_heterogeneities, output_name
 
 
 
@@ -183,7 +185,9 @@ def apply_label_swap(list_clients, row_exp, list_swaps):
             data_preparation(client)
 
         list_clients[start_index:end_index] = list_clients_swapped
-    
+
+    list_clients  = list_clients[:end_index]
+
     return list_clients
 
 
@@ -485,3 +489,16 @@ def save_results(model_server, row_exp):
             torch.save(model_server.clusters_models[cluster_id].state_dict(), f"./results/{row_exp['output']}_{row_exp['exp_type']}_model_cluster_{cluster_id}.pth")
 
     return 
+
+
+def get_uid(str_obj):
+    """
+    Generates an (almost) unique Identifier given a string object.
+    Note: Collision probability is low enough to be functional for the use case desired which is to uniquely identify experiment parameters using an int
+    """
+
+    import hashlib
+    hash = hashlib.sha1(str_obj.encode("UTF-8")).hexdigest()
+    return hash
+
+    

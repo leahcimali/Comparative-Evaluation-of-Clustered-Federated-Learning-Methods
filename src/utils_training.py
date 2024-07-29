@@ -13,41 +13,52 @@ def lr_schedule(epoch,lr):
         return lr
 
 
-def run_cfl_server_side(model_server, list_clients, row_exp):
+def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     from src.utils_fed import k_means_clustering
     from src.metrics import report_CFL
+    from src.utils_logging import cprint
     import copy
     
     model_server = train_federated(model_server, list_clients, row_exp)
     
+    cprint(f"Finished pre-round of FL")
+
     model_server.clusters_models= {cluster_id: copy.deepcopy(model_server.model) for cluster_id in range(row_exp['num_clusters'])}
     
     setattr(model_server, 'num_clusters', row_exp['num_clusters'])
 
     k_means_clustering(list_clients, row_exp['num_clusters'])
 
+    cprint("Finished k-means clustering")
+
     model_server = train_federated(model_server, list_clients, row_exp)
 
-    print('Terminated server-side clustering')
+    cprint("Finished post-round of FL")
 
-    results = report_CFL(model_server, list_clients, row_exp)
+    cprint('Finished server-side CFL')
+
+    results = report_CFL(model_server, list_clients, output_name)
+
     return results
 
     
-def run_cfl_client_side(model_server, list_clients, row_exp, init_cluster=True):
+def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_cluster=True):
 
     from src.utils_fed import init_server_cluster, set_client_cluster, fedavg
     from src.metrics import report_CFL
+    from src.utils_logging import cprint
 
     if init_cluster == True : 
         
         init_server_cluster(model_server, list_clients, row_exp, p_expert_opinion=0.8)
 
-    print({c:{h:n
+    cprint("Clusters initialized", lvl ="info")
+
+    cprint({c:{h:n
             for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
               for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
-                for c in range(row_exp['num_clusters'])})    
+                for c in range(row_exp['num_clusters'])}, lvl = "info")    
     
     for round in range(row_exp['federated_rounds']):
 
@@ -61,18 +72,22 @@ def run_cfl_client_side(model_server, list_clients, row_exp, init_cluster=True):
 
         #print([c.cluster_id for c in list_clients])
 
-        print({c:{h:n
+        cprint(f"Round {round} clusters distributions", lvl="info")
+
+        cprint({c:{h:n
             for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
               for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
                 for c in range(row_exp['num_clusters'])})
 
-        print(f'Terminated round {round} of client-side clustering')
+        cprint(f'Finished round {round} of client-side clustering')
 
-    results = report_CFL(model_server, list_clients, row_exp)
+    cprint("Finished client-side CFL")
+
+    results = report_CFL(model_server, list_clients, output_name)
     return results
     
 
-def run_benchmark(list_clients, row_exp, df_results, main_model = None, write_results = False, training_type="centralized"):
+def run_benchmark(list_clients, row_exp, output_name, df_results, main_model = None, write_results = False, training_type="centralized"):
     
     from src.models import SimpleLinear
 
@@ -84,7 +99,7 @@ def run_benchmark(list_clients, row_exp, df_results, main_model = None, write_re
     df_results = test_benchmark(model_server, list_clients, test_loader, row_exp, df_results, training_type)
 
     if write_results:
-        df_results.to_csv(path_or_buf="test.csv")
+        df_results.to_csv(path_or_buf= output_name + ".csv")
 
     return df_results
 

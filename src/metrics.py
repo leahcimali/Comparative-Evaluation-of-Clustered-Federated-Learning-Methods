@@ -87,7 +87,7 @@ def calinski_harabasz_index(X, labels):
 # ch_idx = calinski_harabasz_index(X, labels)
 
 
-def report_CFL(model_server, list_clients, row_exp):
+def report_CFL(model_server, list_clients, output_name):
     # function that create an experiment report for CFL and save it as a json with metrics and accuracies
     from sklearn.metrics import silhouette_score
     import json
@@ -96,9 +96,6 @@ def report_CFL(model_server, list_clients, row_exp):
     vars_weights = model_weight_matrix(list_clients)
     var_labels = [client.cluster_id for client in list_clients]
 
-    #vars_weights['clusters'] = var_labels 
-    #vars_weights.to_pickle(f'./results/{row_exp['output']}_client_weights.pkl')  
-   
     try : 
         silhouette_scores = silhouette_score(vars_weights, var_labels, metric='euclidean')
     except ValueError:
@@ -134,8 +131,7 @@ def report_CFL(model_server, list_clients, row_exp):
 
             results[f'Cluster {cluster_id}'] = {'num_members' : len(client_cluster_list), 'accuracy' : np.mean(clients_accs), 'std' : np.std(clients_accs), 'members_heterogeneity':hetero_dict}
 
-
-        with open('./results/{}.json'.format(row_exp['output']), 'w') as json_file:
+        with open('./results/{}.json'.format(output_name), 'w') as json_file:
             json.dump(results, json_file, indent=4)
 
 
