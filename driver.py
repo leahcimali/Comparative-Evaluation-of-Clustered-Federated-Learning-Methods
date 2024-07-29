@@ -46,10 +46,11 @@ def launch_experiment(model_server, list_clients, list_heterogeneities, row_exp,
         from src.utils_training import run_benchmark
         from src.utils_logging import cprint
 
+        str_row_exp = ':'.join(row_exp.to_string().replace('\n', '/').split())
 
         if row_exp['exp_type'] == "benchmark":
             
-            cprint(f"Launching benchmark experiment with parameters:\n{':'.join(row_exp.to_string().replace('\n', '/').split())}", lvl="info")   
+            cprint(f"Launching benchmark experiment with parameters:\n{str_row_exp}", lvl="info")   
 
             df_results = run_benchmark(list_clients, row_exp, output_name,
                                        df_results = df_results, 
@@ -78,13 +79,13 @@ def launch_experiment(model_server, list_clients, list_heterogeneities, row_exp,
                 
         elif row_exp['exp_type'] == "client":
             
-            cprint(f"Launching client-side experiment with parameters:\n {':'.join(row_exp.to_string().replace('\n', '/').split())}", lvl="info")
+            cprint(f"Launching client-side experiment with parameters:\n {str_row_exp}", lvl="info")
 
             run_cfl_client_side(model_server, list_clients, row_exp, output_name)
             
         elif row_exp['exp_type'] == "server":
 
-            cprint(f"Launching server-side experiment with parameters:\n {':'.join(row_exp.to_string().replace('\n', '/').split())}", lvl="info")
+            cprint(f"Launching server-side experiment with parameters:\n {str_row_exp}", lvl="info")
 
             run_cfl_server_side(model_server, list_clients, row_exp, output_name)
             
