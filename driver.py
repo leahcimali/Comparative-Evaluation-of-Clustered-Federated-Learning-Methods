@@ -26,14 +26,8 @@ def main_driver():
             if get_uid(str(file_name.stem)) == hash_outputname:
 
                 cprint(f"Experiment {str(file_name.stem)} already executed in with results in \n {output_name}.json", lvl="warning")   
-
-                try:
-                    if inputimeout('Experiment already ran. Do You Want To Continue [y/n]? (defaults to [y] in 5 seconds): ', timeout=5) != 'y':
-                        return
+                continue
                 
-                except Exception:
-                    continue
-    
         launch_experiment(model_server, list_clients, list_heterogeneities, row_exp, df_results, output_name)
 
     return          
