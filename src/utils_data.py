@@ -144,9 +144,7 @@ def setup_experiment(row_exp, model=SimpleLinear()):
     
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
-    output_name =  row_exp.to_string(header=False, index=False, name=False).replace(' ', "").replace('\n','_')
-
-    return model_server, list_clients, list_heterogeneities, output_name
+    return model_server, list_clients, list_heterogeneities
 
 
 
