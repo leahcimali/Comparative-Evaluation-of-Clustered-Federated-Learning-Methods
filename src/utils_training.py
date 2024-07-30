@@ -201,7 +201,7 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
     
     for epoch in range(row_exp['centralized_epochs']):
         main_model.train()  # Set the model to training mode
-        running_loss = 0.0
+        running_loss = total = correct = 0
 
         # Apply learning rate decay if lr_scheduler is provided
         if lr_scheduler is not None:
@@ -212,14 +212,23 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
         for inputs, labels in train_loader:
             optimizer.zero_grad()  # Zero the gradients
             outputs = main_model(inputs)  # Forward pass
+            _, predicted = torch.max(outputs, 1)
+
             loss = criterion(outputs, labels)  # Calculate the loss
             loss.backward()  # Backward pass
             optimizer.step()  # Update weights
-
+            
             running_loss += loss.item() * inputs.size(0)
+            
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
 
-        main_model.eval()  # Set the model to evaluation mode
-  
+        # Calculate accuracy on the test set
+        accuracy = correct / total
+        #print(f"Epoch {epoch} accuracy: {accuracy}")
+
+        main_model.eval()  # Set the model to evaluation mode        
+
     return main_model
 
 def loss_calculation(model, train_loader): 

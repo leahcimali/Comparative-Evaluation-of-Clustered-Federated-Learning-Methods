@@ -2,7 +2,6 @@
 def main_driver():
 
     from pathlib import Path
-    from inputimeout import inputimeout
     import pandas as pd
 
     from src.utils_logging import cprint, setup_logging
@@ -11,12 +10,21 @@ def main_driver():
     setup_logging()
 
     df_experiments = pd.read_csv("exp_configs.csv")
+
     df_results = pd.DataFrame(columns=['exp_type','training_type', 'heterogeneity_type', 'model_type', 'heterogeneity_class', 'accuracy'])
 
     for _, row_exp in df_experiments.iterrows():
-               
-        model_server, list_clients, list_heterogeneities, output_name = setup_experiment(row_exp)
+        try:
+            model_server, list_clients, list_heterogeneities, output_name = setup_experiment(row_exp)
         
+        except Exception as e:
+            
+            str_row_exp = ':'.join(row_exp.to_string().replace('\n', '/').split())
+
+            cprint(f"Could not run experiment with parameters {str_row_exp}. Exception {e}")
+            
+            continue
+
         hash_outputname = get_uid(output_name)
 
         pathlist = Path("results").rglob('*.json')
@@ -26,6 +34,7 @@ def main_driver():
             if get_uid(str(file_name.stem)) == hash_outputname:
 
                 cprint(f"Experiment {str(file_name.stem)} already executed in with results in \n {output_name}.json", lvl="warning")   
+            
                 continue
                 
         launch_experiment(model_server, list_clients, list_heterogeneities, row_exp, df_results, output_name)
