@@ -89,7 +89,7 @@ def calinski_harabasz_index(X, labels):
 
 def report_CFL(model_server, list_clients, output_name):
     # function that create an experiment report for CFL and save it as a json with metrics and accuracies
-    from sklearn.metrics import silhouette_score
+    from sklearn.metrics import silhouette_score, adjusted_rand_score
     import json
 
     results = {}
@@ -105,13 +105,15 @@ def report_CFL(model_server, list_clients, output_name):
     intra_dist_var = intracluster_distance_variance(vars_weights, var_labels)
     dunn_idx = dunn_index(vars_weights, var_labels)
     db_idx = davies_bouldin_index(vars_weights, var_labels) 
+    adj_rand_score = adjusted_rand_score = adjusted_rand_score([x.heterogeneity_class for x in list_clients],
+                                              [x.cluster_id for x in list_clients] )
 
     results['silhouette'] = silhouette_scores
     results['avg_intra_dist'] = avg_intra_dist
     results['intra_dist_var'] = intra_dist_var
     results['duhn_index'] = dunn_idx
     results['davies_bouldin_index'] = db_idx
-
+    results['adjusted_rand_score'] = adj_rand_score
     
     for cluster_id in range(model_server.num_clusters):
 

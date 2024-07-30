@@ -12,7 +12,7 @@ def get_results(file_path: Path) -> DataFrame:
 
     with open(file_path, 'r') as f:
 
-        global_metrics = ['silhouette', 'avg_intra_dist', 'intra_dist_var', 'duhn_index', 'davies_bouldin_index']
+        global_metrics = ['silhouette', 'avg_intra_dist', 'intra_dist_var', 'duhn_index', 'davies_bouldin_index', 'adjusted_rand_score']
         
         dict_results = json.load(f)
     
