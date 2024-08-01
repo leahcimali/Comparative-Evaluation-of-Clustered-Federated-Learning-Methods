@@ -68,7 +68,7 @@ def get_z_nclients(x_het, y_clust, labels_heterogeneity):
 
 
 
-def histogram_clusters_dist(df_results: DataFrame, title):
+def plot_histogram_clusters(df_results: DataFrame, title):
     
     import matplotlib.pyplot as plt
     import numpy as np 
@@ -115,11 +115,11 @@ def histogram_clusters_dist(df_results: DataFrame, title):
     ax.bar3d(x_heterogeneities,y_clusters,z,dx,dy,dz_nclients, color=[colors[i] for i in x_heterogeneities])
     
     plt.title(title, fontdict=None, loc='center', pad=None)
-    plt.show()
+    plt.savefig('results/plots/histogram_' + title + '.png')
 
 
 if __name__ == "__main__":
     
     df_results, filename = load_data()
 
-    histogram_clusters_dist(df_results, filename)
+    plot_histogram_clusters(df_results, filename)
