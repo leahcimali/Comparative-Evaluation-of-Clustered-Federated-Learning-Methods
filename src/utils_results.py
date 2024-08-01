@@ -10,9 +10,6 @@ def load_data():
     """
     import sys
     import pandas as pd
-    from utils_logging import cprint
-
-    
     
     try:    
         file_path = Path("results/") / Path(sys.argv[1])
@@ -115,7 +112,23 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     ax.bar3d(x_heterogeneities,y_clusters,z,dx,dy,dz_nclients, color=[colors[i] for i in x_heterogeneities])
     
     plt.title(title, fontdict=None, loc='center', pad=None)
+    
     plt.savefig('results/plots/histogram_' + title + '.png')
+
+
+
+def summarize_results(overwrite=False):
+
+    from pathlib import Path
+
+    pathlist = Path("results/").rglob('*.csv')
+    
+    for path in pathlist:
+        list_params = path.stem.split('_')   
+        
+    dict_results = {"exp_type" : list_params[0], "dataset_type": list_params[1], "number_of_clients": list_params[2], "samples by_client": list_params[3]}
+    print(dict_results)
+    #TODO add metrics to the dictionary and save as csv
 
 
 if __name__ == "__main__":
@@ -123,3 +136,5 @@ if __name__ == "__main__":
     df_results, filename = load_data()
 
     plot_histogram_clusters(df_results, filename)
+
+    summarize_results()

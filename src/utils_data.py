@@ -104,23 +104,23 @@ def mnist_dataset_heterogeneities(heterogeneity_type, exp_type):
 
     dict_params = {}
 
-    if heterogeneity_type == "labels_distribution_skew":
+    if heterogeneity_type == "labels-distribution-skew":
         dict_params['skews'] = [[1,2],[3,4],[5,6],[7,8]]
         dict_params['ratios'] = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]]
 
-    elif heterogeneity_type  == "labels_distribution_skew_balancing":
+    elif heterogeneity_type  == "labels-distribution-skew-balancing":
         dict_params['skews'] = [[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]]
         dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]]
         
-    elif heterogeneity_type == 'labels_distribution_skew_downsampled':
+    elif heterogeneity_type == 'labels-distribution-skew-downsampled':
         dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
         dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
                                [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
 
-    elif heterogeneity_type == 'concept_shift_on_labels':
+    elif heterogeneity_type == 'concept-shift-on-labels':
         dict_params['swaps'] = [(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)]
 
-    elif heterogeneity_type == 'quantity_skew':
+    elif heterogeneity_type == 'quantity-skew':
         dict_params['skews'] = [0.1,0.2,0.6,1]
 
     return dict_params
@@ -152,20 +152,20 @@ def add_clients_heterogeneity(list_clients, row_exp):
     
     dict_params = mnist_dataset_heterogeneities(row_exp['heterogeneity_type'], row_exp['exp_type'])
 
-    if row_exp['heterogeneity_type']  == "concept_shift_on_features": # rotations?
+    if row_exp['heterogeneity_type']  == "concept-shift-on-features": # rotations?
         list_clients = apply_rotation(list_clients, row_exp)
     
-    elif row_exp['heterogeneity_type'] == "concept_shift_on_labels": #label swaps
+    elif row_exp['heterogeneity_type'] == "concept-shift-on-labels": #label swaps
         list_clients = apply_label_swap(list_clients, row_exp, dict_params['swaps'])
     
-    elif row_exp['heterogeneity_type'] == "quantity_skew":
+    elif row_exp['heterogeneity_type'] == "quantity-skew":
         list_clients = apply_quantity_skew(list_clients, row_exp, dict_params['skews'])
     
-    elif "labels_distribution_skew" in row_exp['heterogeneity_type']:
+    elif "labels-distribution-skew" in row_exp['heterogeneity_type']:
         list_clients = apply_labels_skew(list_clients, row_exp, dict_params['skews'],
                                           dict_params['ratios'])
     
-    elif row_exp['heterogeneity_type'] == "features_distribution_skew":
+    elif row_exp['heterogeneity_type'] == "features-distribution-skew":
         list_clients = apply_features_skew(list_clients, row_exp)
     
     return list_clients
