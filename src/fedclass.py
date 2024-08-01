@@ -5,7 +5,16 @@ class Client:
         self.data = data 
         self.model = None  # Initialize local model
         self.cluster_id = None # Initialize cluster ID
+        self.heterogeneity_class = None
+        self.accuracy = 0
 
+    def to_dict(self):
+        return {
+            'id': self.id, 
+            'cluster_id': self.cluster_id,
+            'heterogeneity_class': self.heterogeneity_class,
+            'accuracy': self.accuracy
+        }
 
 class Server:
     # Define the server class

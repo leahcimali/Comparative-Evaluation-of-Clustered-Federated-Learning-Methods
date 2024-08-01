@@ -1,122 +1,35 @@
 
-import pandas as pd
 from pandas import DataFrame
-import json
 from pathlib import Path
+   
 
-def get_results(file_path: Path) -> DataFrame:
+def load_data():
 
     """
-    Read json results files and convert to Dataframe
+    Read results file and save as DataFrame 
     """
+    import sys
+    import pandas as pd
+    from utils_logging import cprint
 
-    with open(file_path, 'r') as f:
-
-        global_metrics = ['silhouette', 'avg_intra_dist', 'intra_dist_var', 'duhn_index', 'davies_bouldin_index', 'adjusted_rand_score']
-        
-        dict_results = json.load(f)
     
-        dict_global_metrics = {key: dict_results[key] for key in global_metrics}
-        
-        dict_clusters = {key: dict_results[key] for key in dict_results.keys() if key not in global_metrics}
-
-        df_global_metrics = pd.json_normalize(dict_global_metrics)
-
-        df_clusters = reduce_columns_clusters_(pd.json_normalize(dict_clusters))
-
-        df_clusters = reduce_columns_heterogeneities(df_clusters)
-
-        df_clusters.loc[:, 'filename'] = file_path.stem
-
-    return df_global_metrics, df_clusters
-
-
-def reduce_columns_clusters_(df_clusters: DataFrame) -> DataFrame:
-    """
-    Returns a DataFrame with one row per cluster
-    """
     
-    list_clusters = get_clusters(df_clusters)
-
-    list_dfs = []
-
-    for c in list_clusters:
-
-        df_tmp = df_clusters[[col for col in df_clusters.columns if 'Cluster ' + c + '.' in col]]
-        
-        df_tmp = df_tmp.rename(columns= dict(zip(df_tmp.columns, df_tmp.columns.str.replace('Cluster ' + c + '.', '', regex=False))))
-
-        df_tmp = df_tmp.assign(cluster = pd.Series(c))
+    try:    
+        file_path = Path("results/") / Path(sys.argv[1])
+        df_results = pd.read_csv(file_path)
     
-        list_dfs.append(df_tmp) 
+    except Exception as e:
+        
+        exit("Error: Unable to open result file. Please make sure that the correct path is provided as argument and that the file is not corrupted.")
  
-    df_clusters = pd.concat(list_dfs)
 
-    df_clusters.drop_duplicates(inplace=True)
-
-    return df_clusters 
+    return df_results, sys.argv[1]
 
 
-def reduce_columns_heterogeneities(df_clusters):
 
-    columns_heterogeneity = [col for col in df_clusters.columns if 'members_heterogeneity.' in col]
-
-    labels_heterogeneity = [lbl.replace('members_heterogeneity.', '') for lbl in columns_heterogeneity]
-   
-    df_temp = df_clusters[columns_heterogeneity].copy().fillna(0)
-   
-    df_clusters.loc[:,'members'] = df_temp.astype(str).agg(' '.join, axis=1).apply(lambda x: [int(float(val)) for val in x.split(' ')])
-
-    df_clusters.loc[:, 'members'] = df_clusters['members'].apply(lambda x: sum([x[i]*[labels_heterogeneity[i]] for i,_ in enumerate(x) ],[]))
-
-    return df_clusters    
+def get_clusters(df_results):
     
-    
-
-def load_data(results_dir: Path):
-
-    """
-    Read results files and execute analysis on each 
-    """
-
-    df_results = []
-
-    df_experiments = pd.read_csv("exp_configs.csv")
-    
-    for _, row_exp in df_experiments.iterrows():
-
-        output_name =  row_exp.to_string(header=False, index=False, name=False).replace(' ', "").replace('\n','_')
-
-        file_path = results_dir / Path(output_name + ".json")
-        
-        if file_path.exists():
-            
-            df_gloabl_metrics, df_clusters = get_results(file_path)
-
-            df_results.append(df_clusters)
-    
-    return df_results
-
-
-def get_clusters(df):
-    
-    list_clusters = []
-
-    if 'cluster' in df.columns:
-        
-        list_clusters = df['cluster'].unique()
-    
-    else:
-
-        for col_name in df.columns:
-            
-            if "Cluster" in col_name:
-
-                list_clusters.append(col_name.split('.')[0])
-        
-        list_clusters = list(set(list_clusters))
-
-        list_clusters = [x.split(' ')[1] for x in list_clusters]
+    list_clusters = list(df_results['cluster_id'].unique())
 
     list_clusters = append_empty_clusters(list_clusters)
 
@@ -142,44 +55,35 @@ def append_empty_clusters(list_clusters):
 
 
 
-def replace_by_occurence(labels_list, ref_list):
-    new_list = []
+def get_z_nclients(x_het, y_clust, labels_heterogeneity):
     
-    for i,val in enumerate(ref_list):
-        for _ in range(val):
-            new_list.append(labels_list[i])
-    return new_list
+    z_nclients = [0]* len(x_het)
 
-
-def get_z_nclients(x, y, labels_heterogeneity):
-    
-    z_nclients = []
-    for i in range(len(x)):
-        y_i = y[i]
-        x_i = x[i]
+    for i in range(len(z_nclients)):
         
-        z_i = df_clusters[df_clusters['cluster']== str(y_i)]['members'][0].count(labels_heterogeneity[x_i])
-        z_nclients.append(z_i)
+        z_nclients[i] = len(df_results[(df_results['cluster_id'] == y_clust[i]) &
+                                       (df_results['heterogeneity_class'] == labels_heterogeneity[x_het[i]])])
+
     return z_nclients
 
 
 
-def histogram_clusters_dist(df_clusters: DataFrame):
+def histogram_clusters_dist(df_results: DataFrame, title):
     
     import matplotlib.pyplot as plt
     import numpy as np 
         
-    columns_heterogeneity = [col for col in df_clusters.columns if 'members_heterogeneity.' in col]
-    labels_heterogeneity = [lbl.replace('members_heterogeneity.', '') for lbl in columns_heterogeneity]
+
+    labels_heterogeneity = list(df_results['heterogeneity_class'].unique())
 
     bar_width = bar_depth = 0.5
 
-    n_clusters =  len(get_clusters(df_clusters))
+    n_clusters =  len(get_clusters(df_results))
     n_heterogeneities = len(labels_heterogeneity)
 
     # bar coordinates lists
     x_heterogeneities = np.repeat(list(range(n_heterogeneities)), n_clusters)  
-    y_clusters = [int(x) for x in get_clusters(df_clusters)] * n_heterogeneities   
+    y_clusters = [int(x) for x in get_clusters(df_results)] * n_heterogeneities   
     z = [0]*len(x_heterogeneities) 
 
     # dimensions for each bar (note we use the z dimension for the number of clients)
@@ -198,23 +102,24 @@ def histogram_clusters_dist(df_clusters: DataFrame):
     plt.xticks(ticksx, labels_heterogeneity)
     plt.yticks(ticksy, list_clusters)
 
+
     plt.ylabel('Cluster ID')
     plt.xlabel('Heterogeneity Class')
+    
     ax.set_zlabel('Number of Clients')
-
+    ax.set_zticks(list(range(0,max(dz_nclients)+1,1)))
+    
     cmap = plt.get_cmap('gnuplot')
     colors = [cmap(i) for i in np.linspace(0, 1, len(x_heterogeneities))]
 
     ax.bar3d(x_heterogeneities,y_clusters,z,dx,dy,dz_nclients, color=[colors[i] for i in x_heterogeneities])
     
-    plt.title(df_clusters.iloc[0]['filename'], fontdict=None, loc='center', pad=None)
+    plt.title(title, fontdict=None, loc='center', pad=None)
     plt.show()
 
 
 if __name__ == "__main__":
     
-    df_results = load_data(Path("./results"))
-    
-    for df_clusters in df_results:
+    df_results, filename = load_data()
 
-        histogram_clusters_dist(df_clusters)
+    histogram_clusters_dist(df_results, filename)

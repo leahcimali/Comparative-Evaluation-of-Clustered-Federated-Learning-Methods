@@ -38,7 +38,9 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     cprint('Finished server-side CFL')
 
-    results = report_CFL(model_server, list_clients, output_name)
+    list_clients = add_clients_accuracies(model_server, list_clients)
+
+    results = report_CFL(list_clients, output_name)
 
     return results
 
@@ -82,6 +84,8 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
         cprint(f'Finished round {round} of client-side clustering')
 
     cprint("Finished client-side CFL")
+
+    list_clients = add_clients_accuracies(model_server, list_clients)
 
     results = report_CFL(model_server, list_clients, output_name)
     return results
@@ -302,3 +306,13 @@ def test_model(model, test_loader):
 
     # Print the test loss and accuracy
     return accuracy
+
+
+def add_clients_accuracies(model_server, list_clients):
+    
+
+    for client in list_clients : 
+        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'])*100
+        setattr(client, 'accuracy', acc)
+
+    return list_clients

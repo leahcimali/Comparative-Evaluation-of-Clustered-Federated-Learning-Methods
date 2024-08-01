@@ -77,22 +77,13 @@ def calinski_harabasz_index(X, labels):
     except ValueError:
         return None
 
-# Example usage:
-# Assuming X is your data and labels are cluster labels assigned to each data point
-# You can compute the metrics like this:
-# avg_intra_dist = average_intracluster_distance(X, labels)
-# intra_dist_var = intracluster_distance_variance(X, labels)
-# dunn_idx = dunn_index(X, labels)
-# db_idx = davies_bouldin_index(X, labels)
-# ch_idx = calinski_harabasz_index(X, labels)
+def calc_global_metrics(list_clients):
 
-
-def report_CFL(model_server, list_clients, output_name):
-    # function that create an experiment report for CFL and save it as a json with metrics and accuracies
+    """
+    Calculate global metrics based on model weights
+    """
     from sklearn.metrics import silhouette_score, adjusted_rand_score
-    import json
 
-    results = {}
     vars_weights = model_weight_matrix(list_clients)
     var_labels = [client.cluster_id for client in list_clients]
 
@@ -104,37 +95,26 @@ def report_CFL(model_server, list_clients, output_name):
     avg_intra_dist = average_intracluster_distance(vars_weights, var_labels)
     intra_dist_var = intracluster_distance_variance(vars_weights, var_labels)
     dunn_idx = dunn_index(vars_weights, var_labels)
-    db_idx = davies_bouldin_index(vars_weights, var_labels) 
+
     adj_rand_score = adjusted_rand_score = adjusted_rand_score([x.heterogeneity_class for x in list_clients],
                                               [x.cluster_id for x in list_clients] )
-
-    results['silhouette'] = silhouette_scores
-    results['avg_intra_dist'] = avg_intra_dist
-    results['intra_dist_var'] = intra_dist_var
-    results['duhn_index'] = dunn_idx
-    results['davies_bouldin_index'] = db_idx
-    results['adjusted_rand_score'] = adj_rand_score
     
-    for cluster_id in range(model_server.num_clusters):
-
-        client_cluster_list = [client for client in list_clients if client.cluster_id == cluster_id]
-        clients_accs = []
-
-        if len(client_cluster_list) > 0 :
-
-            for client in client_cluster_list : 
-                acc = test_model(model_server.clusters_models[cluster_id], client.data_loader['test'])*100
-                clients_accs.append(acc)
+    list_results = [silhouette_scores, avg_intra_dist, intra_dist_var, dunn_idx, adj_rand_score]
+    
+    return list_results
 
 
-            cluster_heterogeneity = [client.heterogeneity_class for client in client_cluster_list]
-            values, counts = np.unique(cluster_heterogeneity, return_counts = True)
-            hetero_dict= {str(values[i]) : int(counts[i]) for i in range(len(values))}
+def report_CFL(list_clients, output_name):
+    """
+    Save results as a csv
+    """
+    import pandas as pd
 
-            results[f'Cluster {cluster_id}'] = {'num_members' : len(client_cluster_list), 'accuracy' : np.mean(clients_accs), 'std' : np.std(clients_accs), 'members_heterogeneity':hetero_dict}
+    df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
+    
+    df_results.to_csv("results/" + output_name + ".csv")
 
-        with open('./results/{}.json'.format(output_name), 'w') as json_file:
-            json.dump(results, json_file, indent=4)
+    return
 
 
 def plot_mnist(image,label):
