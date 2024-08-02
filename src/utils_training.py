@@ -87,7 +87,7 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 
     list_clients = add_clients_accuracies(model_server, list_clients)
 
-    results = report_CFL(model_server, list_clients, output_name)
+    results = report_CFL(list_clients, output_name)
     return results
     
 

@@ -116,6 +116,15 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     plt.savefig('results/plots/histogram_' + title + '.png')
 
 
+def normalize_results(results_accuracy, results_std):
+    
+    if results_accuracy < 1:
+        
+        results_accuracy = results_accuracy * 100
+    
+        results_std = results_std * 100
+
+    return results_accuracy, results_std
 
 
 def summarize_results():
@@ -133,32 +142,38 @@ def summarize_results():
 
     for path in pathlist:
         
-        try:
+        if 'summarized_results' not in str(path):
+            
             df_exp_results = pd.read_csv(path)
 
-            labels_true = list(df_exp_results['heterogeneity_class'])
-            labels_pred = list(df_exp_results['cluster_id'])
-            
-            results_accuracy = mean(list(df_exp_results['accuracy']))
+            results_accuracy = mean(list(df_exp_results['accuracy'])) 
             results_std = std(list(df_exp_results['accuracy']))
 
+            results_accuracy, results_std = normalize_results(results_accuracy, results_std)
+  
             list_params = path.stem.split('_')         
             dict_exp_results = {"exp_type" : list_params[0], "dataset_type": list_params[1], "number_of_clients": list_params[2],
-                                "samples by_client": list_params[3], "num_clusters": list_params[4], "centralized_epochs": list_params[5],
-                                "federated_rounds": list_params[6], "federated_local_epochs": list_params[7], "seed": list_params[8],
-                                 "accuracy": results_accuracy, "std": results_std}
+                                    "samples by_client": list_params[3], "num_clusters": list_params[4], "centralized_epochs": list_params[5],
+                                    "federated_rounds": list_params[6], "federated_local_epochs": list_params[7], "seed": list_params[8],
+                                    "accuracy": results_accuracy, "std": results_std}
 
-            dict_metrics = calc_global_metrics(labels_true=labels_true, labels_pred=labels_pred)
-        
-            dict_exp_results.update(dict_metrics)
+            try:
+                
+                labels_true = list(df_exp_results['heterogeneity_class'])
+                labels_pred = list(df_exp_results['cluster_id'])
+                
+                dict_metrics = calc_global_metrics(labels_true=labels_true, labels_pred=labels_pred)
             
-            list_results.append(dict_exp_results)
-        
-        except:
-            cprint(f"Warning: file {path} was not processed for the summarized results",lvl="warning")
+                dict_exp_results.update(dict_metrics)
+                
+            
+            except:
 
-            continue
+                cprint(f"Warning: Could not calculate cluster metrics for file {path}",lvl="warning")
+                
     
+            list_results.append(dict_exp_results)
+            
     df_results = pd.DataFrame(list_results)
 
     df_results.to_csv("results/summarized_results.csv", float_format='%.2f')
