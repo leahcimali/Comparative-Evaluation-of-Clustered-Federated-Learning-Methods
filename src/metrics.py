@@ -1,7 +1,4 @@
-from src.utils_training import test_model
-from src.utils_fed import model_weight_matrix
 import numpy as np 
-import pandas as pd
 from sklearn.metrics import pairwise_distances
 import numpy as np
 from scipy.spatial import distance
@@ -77,31 +74,23 @@ def calinski_harabasz_index(X, labels):
     except ValueError:
         return None
 
-def calc_global_metrics(list_clients):
+def calc_global_metrics(labels_true, labels_pred):
 
     """
     Calculate global metrics based on model weights
     """
-    from sklearn.metrics import silhouette_score, adjusted_rand_score
+    from sklearn.metrics import adjusted_rand_score, homogeneity_completeness_v_measure, adjusted_mutual_info_score
 
-    vars_weights = model_weight_matrix(list_clients)
-    var_labels = [client.cluster_id for client in list_clients]
+    homogeneity_score, completness_score, v_measure = homogeneity_completeness_v_measure(labels_true, labels_pred)
 
-    try : 
-        silhouette_scores = silhouette_score(vars_weights, var_labels, metric='euclidean')
-    except ValueError:
-        silhouette_scores = None
-        
-    avg_intra_dist = average_intracluster_distance(vars_weights, var_labels)
-    intra_dist_var = intracluster_distance_variance(vars_weights, var_labels)
-    dunn_idx = dunn_index(vars_weights, var_labels)
+    ARI_score = adjusted_rand_score = adjusted_rand_score(labels_true, labels_pred)
 
-    adj_rand_score = adjusted_rand_score = adjusted_rand_score([x.heterogeneity_class for x in list_clients],
-                                              [x.cluster_id for x in list_clients] )
+    AMI_score = adjusted_mutual_info_score(labels_true, labels_pred) 
     
-    list_results = [silhouette_scores, avg_intra_dist, intra_dist_var, dunn_idx, adj_rand_score]
+    dict_metrics = {"ARI": ARI_score, "AMI": AMI_score, "homogeneity": homogeneity_score, "completness": completness_score, "v_measure": v_measure}
     
-    return list_results
+    return dict_metrics
+
 
 
 def report_CFL(list_clients, output_name):

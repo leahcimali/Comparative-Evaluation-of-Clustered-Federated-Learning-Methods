@@ -117,24 +117,60 @@ def plot_histogram_clusters(df_results: DataFrame, title):
 
 
 
-def summarize_results(overwrite=False):
+
+def summarize_results():
 
     from pathlib import Path
+    import pandas as pd
+    from numpy import mean, std
 
-    pathlist = Path("results/").rglob('*.csv')
+    from metrics import calc_global_metrics
+    from utils_logging import cprint
+
+    pathlist = Path("results/").rglob('*.csv') 
     
+    list_results = []
+
     for path in pathlist:
-        list_params = path.stem.split('_')   
         
-    dict_results = {"exp_type" : list_params[0], "dataset_type": list_params[1], "number_of_clients": list_params[2], "samples by_client": list_params[3]}
-    print(dict_results)
-    #TODO add metrics to the dictionary and save as csv
+        try:
+            df_exp_results = pd.read_csv(path)
+
+            labels_true = list(df_exp_results['heterogeneity_class'])
+            labels_pred = list(df_exp_results['cluster_id'])
+            
+            results_accuracy = mean(list(df_exp_results['accuracy']))
+            results_std = std(list(df_exp_results['accuracy']))
+
+            list_params = path.stem.split('_')         
+            dict_exp_results = {"exp_type" : list_params[0], "dataset_type": list_params[1], "number_of_clients": list_params[2],
+                                "samples by_client": list_params[3], "num_clusters": list_params[4], "centralized_epochs": list_params[5],
+                                "federated_rounds": list_params[6], "federated_local_epochs": list_params[7], "seed": list_params[8],
+                                 "accuracy": results_accuracy, "std": results_std}
+
+            dict_metrics = calc_global_metrics(labels_true=labels_true, labels_pred=labels_pred)
+        
+            dict_exp_results.update(dict_metrics)
+            
+            list_results.append(dict_exp_results)
+        
+        except:
+            cprint(f"Warning: file {path} was not processed for the summarized results",lvl="warning")
+
+            continue
+    
+    df_results = pd.DataFrame(list_results)
+
+    df_results.to_csv("results/summarized_results.csv", float_format='%.2f')
+
+    return
+
+
 
 
 if __name__ == "__main__":
     
-    df_results, filename = load_data()
-
-    plot_histogram_clusters(df_results, filename)
+    #df_results, filename = load_data()
+    #plot_histogram_clusters(df_results, filename)
 
     summarize_results()
