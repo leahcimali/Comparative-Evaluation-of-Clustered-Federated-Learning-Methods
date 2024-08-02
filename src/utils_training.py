@@ -19,7 +19,10 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
     from src.metrics import report_CFL
     from src.utils_logging import cprint
     import copy
-    
+    import torch 
+
+    torch.manual_seed(row_exp['seed'])
+
     model_server = train_federated(model_server, list_clients, row_exp)
     
     cprint(f"Finished pre-round of FL")
@@ -38,7 +41,7 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     cprint('Finished server-side CFL')
 
-    list_clients = add_clients_accuracies(model_server, list_clients)
+    list_clients = add_clients_accuracies(model_server, list_clients, row_exp['seed'])
 
     results = report_CFL(list_clients, output_name)
 
@@ -50,6 +53,9 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
     from src.utils_fed import init_server_cluster, set_client_cluster, fedavg
     from src.metrics import report_CFL
     from src.utils_logging import cprint
+    import torch
+
+    torch.manual_seed(row_exp['seed'])
 
     if init_cluster == True : 
         
@@ -70,7 +76,7 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 
         fedavg(model_server, list_clients)
         
-        set_client_cluster(model_server, list_clients, row_exp['num_clusters'])
+        set_client_cluster(model_server, list_clients, row_exp)
 
         #print([c.cluster_id for c in list_clients])
 
@@ -85,7 +91,7 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 
     cprint("Finished client-side CFL")
 
-    list_clients = add_clients_accuracies(model_server, list_clients)
+    list_clients = add_clients_accuracies(model_server, list_clients, row_exp['seed'])
 
     results = report_CFL(list_clients, output_name)
     return results
@@ -203,7 +209,8 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
     criterion = nn.CrossEntropyLoss()
     optimizer=optim.SGD
     optimizer = optimizer(main_model.parameters(), lr=lr) 
-    
+    torch.manual_seed(row_exp['seed'])
+
     for epoch in range(row_exp['centralized_epochs']):
         main_model.train()  # Set the model to training mode
         running_loss = total = correct = 0
@@ -236,7 +243,7 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
 
     return main_model
 
-def loss_calculation(model, train_loader): 
+def loss_calculation(model, train_loader, seed): 
     import torch
     import torch.nn as nn
 
@@ -252,6 +259,7 @@ def loss_calculation(model, train_loader):
     total_loss = 0.0
     total_samples = 0
 
+    torch.manual_seed(seed)
     # Iterate through the training data loader
     with torch.no_grad():
         for inputs, targets in train_loader:
@@ -270,7 +278,7 @@ def loss_calculation(model, train_loader):
 
     return average_loss
 
-def test_model(model, test_loader):
+def test_model(model, test_loader, seed):
     criterion = nn.CrossEntropyLoss()
 
     # Set the model to evaluation mode
@@ -281,6 +289,8 @@ def test_model(model, test_loader):
     total = 0
     test_loss = 0.0
 
+
+    torch.manual_seed(seed)
     # Disable gradient calculation for evaluation
     with torch.no_grad():
         # Iterate over the test dataset
@@ -309,11 +319,11 @@ def test_model(model, test_loader):
     return accuracy
 
 
-def add_clients_accuracies(model_server, list_clients):
+def add_clients_accuracies(model_server, list_clients, seed):
     
 
     for client in list_clients : 
-        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'])*100
+        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'], seed)*100
         setattr(client, 'accuracy', acc)
 
     return list_clients

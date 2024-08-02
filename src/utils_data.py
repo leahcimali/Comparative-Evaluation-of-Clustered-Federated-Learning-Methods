@@ -12,6 +12,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def shuffle(array,seed=42): 
     # Function to shuffle the samples 
     # Generate a list of shuffled indices
+
+    np.random.seed(seed)
+
     shuffled_indices = np.arange(array.shape[0])
     np.random.shuffle(shuffled_indices)
 
@@ -74,12 +77,15 @@ def rotate_images(client, rotation):
             rotated_images.append(rotated_img)   
         client.data['x'] = np.array(rotated_images)
 
-def data_preparation(client):
-    # Train test split of a client's data and create onf dataloaders for local model training
+def data_preparation(client, seed):
+    """
+    Train test split of a client's data and create onf dataloaders for local model training
+    """
+
     from sklearn.model_selection import train_test_split
     from torch.utils.data import DataLoader, TensorDataset
 
-    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=42,stratify=client.data['y'])
+    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=seed,stratify=client.data['y'])
 
     x_train, x_test = x_train/255.0 , x_test/255.0
     
@@ -100,7 +106,7 @@ def data_preparation(client):
     
 
 
-def mnist_dataset_heterogeneities(heterogeneity_type, exp_type):
+def mnist_dataset_heterogeneities(heterogeneity_type):
 
     dict_params = {}
 
@@ -116,7 +122,6 @@ def mnist_dataset_heterogeneities(heterogeneity_type, exp_type):
         dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
         dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
                                [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
-
     elif heterogeneity_type == 'concept-shift-on-labels':
         dict_params['swaps'] = [(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)]
 
@@ -126,9 +131,13 @@ def mnist_dataset_heterogeneities(heterogeneity_type, exp_type):
     return dict_params
 
 
-
-
 def setup_experiment(row_exp, model=SimpleLinear()):
+
+    list_allowed_exps = ['concept-shift-on-features','concept-shift-on-labels', 'quantity-skew', 'features-distribution-skew', 'labels-distribution-skew']
+    
+    if row_exp['heterogeneity_type'] not in list_allowed_exps:
+        
+        exit(f"Unrecognized experiment parameter {row_exp['heterogeneity_type']}. Please check spelling and try again")
 
     list_clients = []
     model_server = Server(model)
@@ -148,7 +157,7 @@ def setup_experiment(row_exp, model=SimpleLinear()):
 
 def add_clients_heterogeneity(list_clients, row_exp):
     
-    dict_params = mnist_dataset_heterogeneities(row_exp['heterogeneity_type'], row_exp['exp_type'])
+    dict_params = mnist_dataset_heterogeneities(row_exp['heterogeneity_type'])
 
     if row_exp['heterogeneity_type']  == "concept-shift-on-features": # rotations?
         list_clients = apply_rotation(list_clients, row_exp)
@@ -185,7 +194,7 @@ def apply_label_swap(list_clients, row_exp, list_swaps):
         for client in list_clients_swapped:
             
             client = swap_labels(list_swaps[i],client, str(i))
-            data_preparation(client)
+            data_preparation(client, row_exp['seed'])
 
         list_clients[start_index:end_index] = list_clients_swapped
 
@@ -215,7 +224,7 @@ def apply_rotation(list_clients, row_exp):
 
             rotate_images(client , rotation_angle)
             
-            data_preparation(client)
+            data_preparation(client, row_exp['seed'])
             
             setattr(client,'heterogeneity_class', f"rot_{rotation_angle}")
 
@@ -241,7 +250,7 @@ def apply_labels_skew(list_clients, row_exp, list_skews, list_ratios):
             
             unbalancing(client, list_skews[i], list_ratios[i])
             
-            data_preparation(client)
+            data_preparation(client, row_exp['seed'])
 
             setattr(client,'heterogeneity_class', f"lbl_skew_{str(i)}")
 
@@ -264,7 +273,7 @@ def apply_quantity_skew(list_clients, row_exp, list_skews):
     n_clients_by_skew = row_exp['num_clients'] // n_skews  
 
     dict_clients = [get_clients_data(n_clients_by_skew,
-                                    int(n_max_samples * skew)) 
+                                    int(n_max_samples * skew),seed=row_exp['seed']) 
                                     for skew in list_skews] 
            
     list_clients = []
@@ -279,7 +288,7 @@ def apply_quantity_skew(list_clients, row_exp, list_skews):
 
     for client in list_clients :
 
-        data_preparation(client)
+        data_preparation(client, row_exp['seed'])
 
     
     return list_clients
@@ -311,7 +320,7 @@ def apply_features_skew(list_clients, row_exp) :
             else :
                 client.heterogeneity_class = 'none'
 
-            data_preparation(client)
+            data_preparation(client, row_exp['seed'])
 
         list_clients[start_index:end_index] = list_clients_rotated
     
@@ -378,52 +387,6 @@ def unbalancing(client,labels_list ,ratio_list):
     client.data['y'] = y_resampled
     
     return client
-
-
-def load_users_data(directory, number_of_users, seed = 42):
-    import os
-    import json
-    import random
-
-    """
-    Loads n = number_of_users random JSON users_datas from the specified directory.
-
-    Parameters
-    ----------
-    directory : str
-        The directory path where JSON users_datas are located.
-    seed : int
-        A random seed to ensure reproducibility of random selection.
-    number_of_users : int
-        The number of JSON files to load randomly. Correspond to the number of users
-
-    Returns
-    -------
-    users_data : list
-        A list containing the JSON data loaded from the randomly selected files.
-    Each element of the list is a user with its own sample. 
-    It is a dictionnary of the form : 
-    #{'users':[], 'num_samples':{['user_data : val]: }, 'user_data':[json_data['users'][0] : {'x': features, 'y': labels}]} 
-    """
-    
-    # Set the random seed
-    random.seed(seed)
-    
-    # Get a list of JSON files in the directory
-    json_files = [filename for filename in os.listdir(directory) if filename.endswith('.json')]
-    
-    # Sample n files without replacement
-    selected_files = random.sample(json_files, min(number_of_users, len(json_files)))
-    
-    # Load the selected JSON files into a list
-    users_data = []
-    for filename in selected_files:
-        filepath = os.path.join(directory, filename)
-        with open(filepath, 'r') as file:
-            json_data = json.load(file)
-            users_data.append(json_data)
-    
-    return users_data
 
 def dilate_images(x_train, kernel_size=(3, 3)):
     import cv2

@@ -190,7 +190,7 @@ def init_server_cluster(my_server,client_list, row_exp, p_expert_opinion=None):
     
 
 
-def set_client_cluster(my_server, client_list, num_clusters):
+def set_client_cluster(my_server, client_list, row_exp):
     """
     Use the loss to calculate the cluster membership for client-side CFL
     """
@@ -202,9 +202,9 @@ def set_client_cluster(my_server, client_list, num_clusters):
         
         cluster_losses = []
         
-        for cluster_id in range(num_clusters):
+        for cluster_id in range(row_exp['num_clusters']):
         
-            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'])
+            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'], seed=row_exp['seed'])
         
             cluster_losses.append(cluster_loss)
         
