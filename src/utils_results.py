@@ -142,7 +142,7 @@ def summarize_results():
     from numpy import mean, std
 
     from metrics import calc_global_metrics
-    from utils_logging import cprint
+
 
     pathlist = Path("results/").rglob('*.csv') 
     
@@ -177,7 +177,7 @@ def summarize_results():
             
             except:
 
-                cprint(f"Warning: Could not calculate cluster metrics for file {path}",lvl="warning")
+                print(f"Warning: Could not calculate cluster metrics for file {path}",lvl="warning")
                 
     
             list_results.append(dict_exp_results)

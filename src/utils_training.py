@@ -25,19 +25,13 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     model_server = train_federated(model_server, list_clients, row_exp)
     
-    cprint(f"Finished pre-round of FL")
-
     model_server.clusters_models= {cluster_id: copy.deepcopy(model_server.model) for cluster_id in range(row_exp['num_clusters'])}
     
     setattr(model_server, 'num_clusters', row_exp['num_clusters'])
 
     k_means_clustering(list_clients, row_exp['num_clusters'])
 
-    cprint("Finished k-means clustering")
-
     model_server = train_federated(model_server, list_clients, row_exp)
-
-    cprint("Finished post-round of FL")
 
     cprint('Finished server-side CFL')
 
@@ -61,12 +55,11 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
         
         init_server_cluster(model_server, list_clients, row_exp, p_expert_opinion=0.8)
 
-    cprint("Clusters initialized", lvl ="info")
-
-    cprint({c:{h:n
-            for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
-              for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
-                for c in range(row_exp['num_clusters'])}, lvl = "info")    
+    
+    #print({c:{h:n
+    #        for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
+    #          for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
+    #            for c in range(row_exp['num_clusters'])}, lvl = "info")    
     
     for round in range(row_exp['federated_rounds']):
 
@@ -79,15 +72,11 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
         set_client_cluster(model_server, list_clients, row_exp)
 
         #print([c.cluster_id for c in list_clients])
-
-        cprint(f"Round {round} clusters distributions", lvl="info")
-
-        cprint({c:{h:n
-            for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
-              for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
-                for c in range(row_exp['num_clusters'])})
-
-        cprint(f'Finished round {round} of client-side clustering')
+        #print(f"Round {round} clusters distributions")
+        #print({c:{h:n
+        #    for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
+        #      for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
+        #        for c in range(row_exp['num_clusters'])})
 
     cprint("Finished client-side CFL")
 
