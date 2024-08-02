@@ -52,7 +52,7 @@ def append_empty_clusters(list_clusters):
 
 
 
-def get_z_nclients(x_het, y_clust, labels_heterogeneity):
+def get_z_nclients(df_results, x_het, y_clust, labels_heterogeneity):
     
     z_nclients = [0]* len(x_het)
 
@@ -86,7 +86,7 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     # dimensions for each bar (note we use the z dimension for the number of clients)
     dx = [bar_width] * len(x_heterogeneities) 
     dy = [bar_depth] * len(y_clusters) 
-    dz_nclients = get_z_nclients(x_heterogeneities, y_clusters, labels_heterogeneity) 
+    dz_nclients = get_z_nclients(df_results, x_heterogeneities, y_clusters, labels_heterogeneity) 
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')

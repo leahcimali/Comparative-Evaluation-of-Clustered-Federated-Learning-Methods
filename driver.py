@@ -24,8 +24,6 @@ def main_driver(exp_type, heterogeneity_type, num_clients, num_samples_by_label,
 
     setup_logging()
 
-    df_results = pd.DataFrame(columns=['exp_type','training_type', 'heterogeneity_type', 'model_type', 'heterogeneity_class', 'accuracy'])
-
     row_exp = pd.Series({"exp_type": exp_type, "heterogeneity_type": heterogeneity_type, "num_clients": num_clients,
                "num_samples_by_label": num_samples_by_label, "num_clusters": num_clusters, "centralized_epochs": centralized_epochs,
                "federated_rounds": federated_rounds, "federated_local_epochs": federated_local_epochs, "seed": seed})
@@ -46,7 +44,7 @@ def main_driver(exp_type, heterogeneity_type, num_clients, num_samples_by_label,
             return 
     try:
         
-        model_server, list_clients, list_heterogeneities = setup_experiment(row_exp)
+        model_server, list_clients = setup_experiment(row_exp)
     
     except Exception as e:
 
@@ -54,13 +52,13 @@ def main_driver(exp_type, heterogeneity_type, num_clients, num_samples_by_label,
 
         return 
     
-    launch_experiment(model_server, list_clients, list_heterogeneities, row_exp, df_results, output_name)
+    launch_experiment(model_server, list_clients, row_exp, output_name)
 
     return          
             
 
 
-def launch_experiment(model_server, list_clients, list_heterogeneities, row_exp, df_results, output_name):
+def launch_experiment(model_server, list_clients, row_exp, output_name):
         
         from src.utils_training import run_cfl_client_side, run_cfl_server_side
         from src.utils_training import run_benchmark
@@ -72,31 +70,8 @@ def launch_experiment(model_server, list_clients, list_heterogeneities, row_exp,
             
             cprint(f"Launching benchmark experiment with parameters:\n{str_row_exp}", lvl="info")   
 
-            df_results = run_benchmark(list_clients, row_exp, output_name,
-                                       df_results = df_results, 
-                                       training_type="centralized")
+            run_benchmark(list_clients, row_exp, output_name, main_model=model_server)
             
-            df_results = run_benchmark(list_clients, row_exp, output_name,
-                                       df_results = df_results,
-                                       main_model=model_server,
-                                       training_type="federated")
-                        
-            for heterogeneity_class in list_heterogeneities:
-                
-                list_clients_filtered = [client for client in list_clients if client.heterogeneity_class == heterogeneity_class]
-                
-                df_results = run_benchmark(list_clients_filtered, row_exp, 
-                                           output_name,
-                                           df_results= df_results,
-                                           training_type="personalized_centralized")
-                
-                df_results = run_benchmark(list_clients_filtered, row_exp,
-                                           output_name,
-                                           df_results= df_results,
-                                           main_model=model_server,
-                                           training_type="personalized_federated",
-                                           write_results=True)
-                
         elif row_exp['exp_type'] == "client":
             
             cprint(f"Launching client-side experiment with parameters:\n {str_row_exp}", lvl="info")

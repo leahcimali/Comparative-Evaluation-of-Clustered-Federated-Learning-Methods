@@ -91,21 +91,40 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
     return results
     
 
-def run_benchmark(list_clients, row_exp, output_name, df_results, main_model = None, write_results = False, training_type="centralized"):
+def run_benchmark(list_clients, row_exp, output_name, main_model):
     
+    import pandas as pd    
     from src.models import SimpleLinear
 
-    if not main_model:
-         main_model = SimpleLinear()
-    
-    model_server, test_loader = train_benchmark(list_clients, row_exp, main_model, training_type)
+    list_exps = ['global-centralized', 'global-federated', 'pers-centralized', 'pers-federated'] 
+    list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
-    df_results = test_benchmark(model_server, list_clients, test_loader, row_exp, df_results, training_type)
+  
+    for training_type in list_exps: 
+        
+        curr_model = main_model if 'federated' in training_type else SimpleLinear()
 
-    if write_results:
-        df_results.to_csv(path_or_buf= output_name + ".csv")
+        if 'pers' in training_type:
 
-    return df_results
+            for heterogeneity_class in list_heterogeneities:
+                
+                list_clients_filtered = [client for client in list_clients if client.heterogeneity_class == heterogeneity_class]
+
+                model_server, test_loader = train_benchmark(list_clients_filtered, row_exp, curr_model, training_type)
+
+                test_benchmark(model_server, list_clients_filtered, test_loader)
+       
+        elif 'global' in training_type:
+                
+            model_server, test_loader = train_benchmark(list_clients, row_exp, curr_model, training_type)
+
+            test_benchmark(model_server, list_clients, test_loader)
+
+        df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
+
+        df_results.to_csv(path_or_buf=  "results/" + output_name.replace("benchmark", "benchmark-" + training_type) + ".csv")
+
+    return
 
 def train_benchmark(list_clients, row_exp, main_model, training_type="centralized"):
         
@@ -126,37 +145,19 @@ def train_benchmark(list_clients, row_exp, main_model, training_type="centralize
 
 
 
-def test_benchmark(model_trained, list_clients, test_loader, row_exp, df_results, training_type):    
+def test_benchmark(model_trained, list_clients, test_loader):    
          
     from src.utils_training import test_model
-    import pandas as pd
-    import numpy as np
     
-    #'exp_type', 'training_type', 'heterogeneity_type', 'model_type', 'heterogeneity_class', 'accuracy'
-    
-    dict_results = {'exp_type': row_exp['exp_type'],
-                    'training_type': training_type,
-                    'heterogeneity_type': row_exp['heterogeneity_type'],
-                    'model_type': 'central', 
-                    'heterogeneity_class': np.nan,
-                    'accuracy': test_model(model_trained, test_loader) 
-                    }
-
-    df_results = pd.concat([df_results, pd.DataFrame([dict_results])], ignore_index = True)
-
+    global_acc = test_model(model_trained, test_loader) 
+                     
     for client in list_clients : 
         
-        dict_results = {'exp_type': row_exp['exp_type'],
-                        'training_type': training_type,
-                        'heterogeneity_type': row_exp['heterogeneity_type'],
-                        'model_type': 'client' + str(client.id) , 
-                        'heterogeneity_class': client.heterogeneity_class,
-                        'accuracy': test_model(model_trained, client.data_loader['test'])*100
-                        }
+        #client_acc = test_model(model_trained, client.data_loader['test'])*100
 
-        df_results = pd.concat([df_results, pd.DataFrame([dict_results])], ignore_index = True)
+        setattr(client, 'accuracy', global_acc)
     
-    return df_results
+    return global_acc
 
 
 

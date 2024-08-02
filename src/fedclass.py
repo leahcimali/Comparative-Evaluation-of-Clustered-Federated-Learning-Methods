@@ -1,11 +1,15 @@
 class Client:
+
     # Define the client class
     def __init__(self, client_id, data):
+        
+        import numpy as np
+        
         self.id = client_id
         self.data = data 
-        self.model = None  # Initialize local model
-        self.cluster_id = None # Initialize cluster ID
-        self.heterogeneity_class = None
+        self.model = None  
+        self.cluster_id = np.nan 
+        self.heterogeneity_class = np.nan
         self.accuracy = 0
 
     def to_dict(self):

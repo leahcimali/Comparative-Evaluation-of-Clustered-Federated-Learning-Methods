@@ -141,10 +141,8 @@ def setup_experiment(row_exp, model=SimpleLinear()):
         list_clients.append(Client(i, dict_clients[i]))
     
     list_clients = add_clients_heterogeneity(list_clients, row_exp)
-    
-    list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
-    return model_server, list_clients, list_heterogeneities
+    return model_server, list_clients
 
 
 
