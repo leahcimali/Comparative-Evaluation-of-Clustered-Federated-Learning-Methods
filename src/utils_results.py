@@ -3,24 +3,33 @@ from pandas import DataFrame
 from pathlib import Path
    
 
-def load_data():
+def save_histograms():
 
     """
-    Read results file and save as DataFrame 
+    Read result files and save all histogram plots
     """
-    import sys
+
     import pandas as pd
     
-    try:    
-        file_path = Path("results/") / Path(sys.argv[1])
-        df_results = pd.read_csv(file_path)
+    pathlist = Path("results/").rglob('*.csv') 
     
-    except Exception as e:
-        
-        exit("Error: Unable to open result file. Please make sure that the correct path is provided as argument and that the file is not corrupted.")
- 
+    for file_path in pathlist:
 
-    return df_results, sys.argv[1]
+        if 'benchmark' not in str(file_path):
+            
+            try:
+
+                df_results = pd.read_csv(file_path)
+
+                plot_histogram_clusters(df_results, file_path.stem)
+    
+            except Exception as e:
+        
+                print(f"Error: Unable to open result file {file_path}.",e)
+            
+                continue
+
+    return
 
 
 
@@ -104,7 +113,6 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     plt.xlabel('Heterogeneity Class')
     
     ax.set_zlabel('Number of Clients')
-    ax.set_zticks(list(range(0,max(dz_nclients)+1,1)))
     
     cmap = plt.get_cmap('gnuplot')
     colors = [cmap(i) for i in np.linspace(0, 1, len(x_heterogeneities))]
@@ -185,7 +193,6 @@ def summarize_results():
 
 if __name__ == "__main__":
     
-    #df_results, filename = load_data()
-    #plot_histogram_clusters(df_results, filename)
+    save_histograms()
 
     summarize_results()
