@@ -103,10 +103,10 @@ def data_preparation(client, seed):
     x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=seed,stratify=client.data['y'])
 
     x_train, x_test = x_train/255.0 , x_test/255.0
-    
+
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    
+
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
@@ -161,9 +161,9 @@ def setup_experiment(row_exp):
     
     for i in range(row_exp['num_clients']):
         list_clients.append(Client(i, dict_clients[i]))
-    
-    list_clients = add_clients_heterogeneity(list_clients, row_exp)
 
+    list_clients = add_clients_heterogeneity(list_clients, row_exp)
+   
     return model_server, list_clients
 
 
@@ -340,7 +340,7 @@ def apply_features_skew(list_clients, row_exp) :
         list_clients[start_index:end_index] = list_clients_rotated
     
     list_clients = list_clients[:end_index]
-
+    
     return list_clients
 
 

@@ -29,7 +29,7 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
     
     setattr(model_server, 'num_clusters', row_exp['num_clusters'])
 
-    cprint("Preparing to cluster")
+    cprint(f"Preparing to cluster with {len(list_clients)} clients")
 
     k_means_clustering(list_clients, row_exp['num_clusters'])
 
@@ -69,7 +69,7 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 
         for client in list_clients:
 
-            client.model = train_central(client.model, client.data_loader['train'], row_exp)
+            client.model, _ = train_central(client.model, client.data_loader['train'], row_exp)
 
         fedavg(model_server, list_clients)
         
@@ -169,7 +169,7 @@ def train_model(model_server, train_loader, list_clients, row_exp):
         trained_model = trained_obj.model
     
     else:
-        trained_model = train_central(model_server, train_loader, row_exp)
+        trained_model, _ = train_central(model_server, train_loader, row_exp)
     
     return trained_model
 
@@ -184,15 +184,23 @@ def train_federated(main_model, list_clients, row_exp):
     main_model:
         Define the central node model :
     """
-
+    import numpy as np
     from src.utils_fed import send_server_model_to_client, fedavg
     
-    for _ in range(0, row_exp['federated_rounds']):
+    
+    for i in range(0, row_exp['federated_rounds']):
+
+        accs = []
 
         send_server_model_to_client(list_clients, main_model)
 
         for client in list_clients:
-            client.model = train_central(client.model, client.data_loader['train'], row_exp)
+
+            client.model, curr_acc = train_central(client.model, client.data_loader['train'], row_exp)
+
+            accs.append(curr_acc)
+
+        print(f"accuracy at round {i}:", np.mean(accs))
 
         fedavg(main_model, list_clients)
 
@@ -202,12 +210,13 @@ def train_federated(main_model, list_clients, row_exp):
 def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
 
     criterion = nn.CrossEntropyLoss()
-    optimizer=optim.SGD
-    optimizer = optimizer(main_model.parameters(), lr=lr) 
+    optimizer=optim.Adam
+    optimizer = optimizer(main_model.parameters(), lr=0.01) 
     torch.manual_seed(row_exp['seed'])
 
+    main_model.train()
     for epoch in range(row_exp['centralized_epochs']):
-        main_model.train()  # Set the model to training mode
+          
         running_loss = total = correct = 0
 
         # Apply learning rate decay if lr_scheduler is provided
@@ -234,13 +243,12 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-        # Calculate accuracy on the test set
-        accuracy = correct / total
-        #print(f"Epoch {epoch} accuracy: {accuracy}")
+    # Calculate accuracy on the test set
+    accuracy = correct / total
 
-        main_model.eval()  # Set the model to evaluation mode        
+    main_model.eval()  # Set the model to evaluation mode        
 
-    return main_model
+    return main_model, accuracy
 
 def loss_calculation(model, train_loader, seed): 
     import torch

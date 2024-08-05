@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import torch
 
 class SimpleLinear(nn.Module):
     # Simple fully connected neural network with ReLU activations with a single hidden layer of size 200
@@ -17,32 +18,29 @@ class SimpleLinear(nn.Module):
 
 class SimpleConv(nn.Module):
     def __init__(self):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2), # output: 64 x 16 x 16
-
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2), # output: 128 x 8 x 8
-
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2), # output: 256 x 4 x 4
-
-            nn.Flatten(), 
-            nn.Linear(256*4*4, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10))
+        super(SimpleConv, self).__init__()
+        # convolutional layer
+        self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, 3, padding = 1)
+        self.conv3 = nn.Conv2d(32, 16, 3, padding = 1)
+        # max pooling layer
+        self.pool = nn.MaxPool2d(2, 2)
         
-    def forward(self, xb):
-        return self.network(xb)
+        # Fully connected layer
+        self.fc1 = nn.Linear(16 * 4 * 4, 10)
+        
+        # Dropout
+        self.dropout = nn.Dropout(p=0.2)
+
+    def flatten(self, x):
+        return x.reshape(x.size()[0], -1)
+    
+    def forward(self, x):
+        # add sequence of convolutional and max pooling layers
+        x = self.dropout(self.pool(F.relu(self.conv1(x))))
+        x = self.dropout(self.pool(F.relu(self.conv2(x))))
+        x = self.dropout(self.pool(F.relu(self.conv3(x))))
+        x = self.flatten(x)
+        x = self.fc1(x)
+
+        return F.log_softmax(x, dim=1)

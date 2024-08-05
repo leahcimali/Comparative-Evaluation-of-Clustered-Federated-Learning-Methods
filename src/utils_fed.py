@@ -180,7 +180,7 @@ def init_server_cluster(my_server, client_list, row_exp, p_expert_opinion=None):
     if 'mnist' in row_exp['dataset']:
         my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(row_exp['num_clusters'])}
     else:
-        my_server.clusters_models = {cluster_id: SimpleConv(h1=200) for cluster_id in range(row_exp['num_clusters'])}
+        my_server.clusters_models = {cluster_id: SimpleConv() for cluster_id in range(row_exp['num_clusters'])}
 
     
     for client in client_list:
