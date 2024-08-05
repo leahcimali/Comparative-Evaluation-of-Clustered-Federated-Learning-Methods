@@ -99,23 +99,29 @@ def data_preparation(client, seed):
 
     from sklearn.model_selection import train_test_split
     from torch.utils.data import DataLoader, TensorDataset
-
+   
     x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=seed,stratify=client.data['y'])
 
     x_train, x_test = x_train/255.0 , x_test/255.0
 
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
+    x_train_tensor.to(device)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
+    y_train_tensor.to(device)
 
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
+    x_test_tensor.to(device)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
+    y_test_tensor.to(device)
     
+
+
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=64)
-    
+    test_loader = DataLoader(test_dataset, batch_size=64)    
+
     setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
     
