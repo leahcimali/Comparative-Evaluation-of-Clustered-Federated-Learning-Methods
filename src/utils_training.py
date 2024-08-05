@@ -29,13 +29,17 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
     
     setattr(model_server, 'num_clusters', row_exp['num_clusters'])
 
+    cprint("Preparing to cluster")
+
     k_means_clustering(list_clients, row_exp['num_clusters'])
 
+    cprint("Finished clustering")
+    
     model_server = train_federated(model_server, list_clients, row_exp)
 
     cprint('Finished server-side CFL')
 
-    list_clients = add_clients_accuracies(model_server, list_clients, row_exp['seed'])
+    list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
 
     results = report_CFL(list_clients, output_name)
 
@@ -80,7 +84,7 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 
     cprint("Finished client-side CFL")
 
-    list_clients = add_clients_accuracies(model_server, list_clients, row_exp['seed'])
+    list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
 
     results = report_CFL(list_clients, output_name)
     return results
@@ -109,13 +113,13 @@ def run_benchmark(list_clients, row_exp, output_name, main_model):
 
                 model_server, test_loader = train_benchmark(list_clients_filtered, row_exp, curr_model, training_type)
 
-                test_benchmark(model_server, list_clients_filtered, test_loader)
+                test_benchmark(model_server, list_clients_filtered, test_loader, row_exp)
        
         elif 'global' in training_type:
                 
             model_server, test_loader = train_benchmark(list_clients, row_exp, curr_model, training_type)
 
-            test_benchmark(model_server, list_clients, test_loader)
+            test_benchmark(model_server, list_clients, test_loader, row_exp)
 
         df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
 
@@ -142,11 +146,11 @@ def train_benchmark(list_clients, row_exp, main_model, training_type="centralize
 
 
 
-def test_benchmark(model_trained, list_clients, test_loader):    
+def test_benchmark(model_trained, list_clients, test_loader, row_exp):    
          
     from src.utils_training import test_model
     
-    global_acc = test_model(model_trained, test_loader) 
+    global_acc = test_model(model_trained, test_loader, row_exp) 
                      
     for client in list_clients : 
         
@@ -273,7 +277,7 @@ def loss_calculation(model, train_loader, seed):
 
     return average_loss
 
-def test_model(model, test_loader, seed):
+def test_model(model, test_loader, row_exp):
     criterion = nn.CrossEntropyLoss()
 
     # Set the model to evaluation mode
@@ -285,11 +289,15 @@ def test_model(model, test_loader, seed):
     test_loss = 0.0
 
 
-    torch.manual_seed(seed)
+    torch.manual_seed(row_exp['seed'])
     # Disable gradient calculation for evaluation
     with torch.no_grad():
         # Iterate over the test dataset
         for inputs, labels in test_loader:
+
+            if row_exp['dataset'] == "cifar10":
+                inputs = inputs.permute(0,3,1,2)
+
             # Forward pass
             outputs = model(inputs)
 
@@ -314,11 +322,11 @@ def test_model(model, test_loader, seed):
     return accuracy
 
 
-def add_clients_accuracies(model_server, list_clients, seed):
+def add_clients_accuracies(model_server, list_clients, row_exp):
     
 
     for client in list_clients : 
-        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'], seed)*100
+        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'], row_exp)*100
         setattr(client, 'accuracy', acc)
 
     return list_clients
