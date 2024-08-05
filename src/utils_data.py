@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 from src.fedclass import Client, Server
-from src.models import SimpleLinear 
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def shuffle(array,seed=42): 
@@ -22,24 +22,39 @@ def shuffle(array,seed=42):
     shuffled_arr = array[shuffled_indices].copy()
     return shuffled_arr
 
-def create_mnist_label_dict(seed = 42) :
-    # Create a dictionary of mnist samples by labels 
-    from tensorflow.keras.datasets import mnist
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+def create_label_dict(dataset, seed = 42) :
+    """
+    Create a dictionary of dataset samples by labels 
+    """
+    import sys
+    from tensorflow.keras.datasets import mnist, fashion_mnist, cifar10
 
-    # Seperating Mnist by labels
+    if dataset == "fashion-mnist":
+        (x_train, y_train), _ = fashion_mnist.load_data()
+    elif dataset == 'mnist':
+        (x_train, y_train), _ = mnist.load_data()
+    elif dataset == 'cifar10':
+        (x_train, y_train), _ = cifar10.load_data()
+    else:
+        sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'cifar10']")    
+
+    
     label_dict = {}
     for label in range(10):
+       
         label_indices = np.where(y_train == label)[0]
+       
         label_samples_x = x_train[label_indices]
-        # Dictionnary that contains all samples of the labels to associate key 
+          
         label_dict[label] = shuffle(label_samples_x, seed)
         
     return label_dict
 
-def get_clients_data(num_clients, num_samples_by_label, seed = 42):
+
+
+def get_clients_data(num_clients, num_samples_by_label, dataset, seed = 42):
     """
-    Distribute Mnist Dataset evenly accross num_clients clients
+    Distribute Dataset evenly accross num_clients clients
     ----------
     num_clients : int
         number of client of interest
@@ -52,7 +67,7 @@ def get_clients_data(num_clients, num_samples_by_label, seed = 42):
         Dictionnary where each key correspond to a client index. The samples will be contained in the 'x' key and the target in 'y' key
     """
     
-    label_dict = create_mnist_label_dict(seed)
+    label_dict = create_label_dict(dataset, seed)
     # Initialize dictionary to store client data
     clients_dictionary = {}
     client_dataset = {}
@@ -96,17 +111,17 @@ def data_preparation(client, seed):
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=32)
+    test_loader = DataLoader(test_dataset, batch_size=64)
     
     setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
     
 
 
-def mnist_dataset_heterogeneities(heterogeneity_type):
+def get_dataset_heterogeneities(heterogeneity_type):
 
     dict_params = {}
 
@@ -114,14 +129,15 @@ def mnist_dataset_heterogeneities(heterogeneity_type):
         dict_params['skews'] = [[1,2],[3,4],[5,6],[7,8]]
         dict_params['ratios'] = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]]
 
-    elif heterogeneity_type  == "labels-distribution-skew-balancing":
-        dict_params['skews'] = [[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]]
-        dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]]
+    #elif heterogeneity_type  == "labels-distribution-skew-balancing":
+    #    dict_params['skews'] = [[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]]
+    #    dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]]
         
-    elif heterogeneity_type == 'labels-distribution-skew-downsampled':
-        dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
-        dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
-                               [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
+    #if heterogeneity_type == 'labels-distribution-skew':
+    #    dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
+    #    dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
+    #                           [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
+    
     elif heterogeneity_type == 'concept-shift-on-labels':
         dict_params['swaps'] = [(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)]
 
@@ -131,19 +147,16 @@ def mnist_dataset_heterogeneities(heterogeneity_type):
     return dict_params
 
 
-def setup_experiment(row_exp, model=SimpleLinear()):
+def setup_experiment(row_exp):
 
-    list_allowed_exps = ['concept-shift-on-features','concept-shift-on-labels', 'quantity-skew', 'features-distribution-skew', 'labels-distribution-skew']
+    from src.models import SimpleLinear, SimpleConv
     
-    if row_exp['heterogeneity_type'] not in list_allowed_exps:
-        
-        exit(f"Unrecognized experiment parameter {row_exp['heterogeneity_type']}. Please check spelling and try again")
-
     list_clients = []
-    model_server = Server(model)
+    model_server = Server(SimpleLinear()) if 'mnist' in row_exp['dataset'] else Server(SimpleConv())
 
     dict_clients = get_clients_data(row_exp['num_clients'],
                                     row_exp['num_samples_by_label'],
+                                    row_exp['dataset'],
                                     row_exp['seed'])    
     
     for i in range(row_exp['num_clients']):
@@ -157,22 +170,22 @@ def setup_experiment(row_exp, model=SimpleLinear()):
 
 def add_clients_heterogeneity(list_clients, row_exp):
     
-    dict_params = mnist_dataset_heterogeneities(row_exp['heterogeneity_type'])
+    dict_params = get_dataset_heterogeneities(row_exp['heterogeneity_type'])
 
-    if row_exp['heterogeneity_type']  == "concept-shift-on-features": # rotations?
+    if row_exp['heterogeneity_type']  == "concept-shift-on-features": # rotations
         list_clients = apply_rotation(list_clients, row_exp)
     
     elif row_exp['heterogeneity_type'] == "concept-shift-on-labels": #label swaps
         list_clients = apply_label_swap(list_clients, row_exp, dict_params['swaps'])
     
-    elif row_exp['heterogeneity_type'] == "quantity-skew":
-        list_clients = apply_quantity_skew(list_clients, row_exp, dict_params['skews'])
+    elif row_exp['heterogeneity_type'] == "quantity-skew": #less images altogether for certain clients
+        list_clients = apply_quantity_skew(list_clients, row_exp, dict_params['skews']) 
     
-    elif "labels-distribution-skew" in row_exp['heterogeneity_type']:
-        list_clients = apply_labels_skew(list_clients, row_exp, dict_params['skews'],
+    elif row_exp['heterogeneity_type'] == "labels-distribution-skew":
+        list_clients = apply_labels_skew(list_clients, row_exp, dict_params['skews'], # less images of certain labels
                                           dict_params['ratios'])
     
-    elif row_exp['heterogeneity_type'] == "features-distribution-skew":
+    elif row_exp['heterogeneity_type'] == "features-distribution-skew": #change image qualities
         list_clients = apply_features_skew(list_clients, row_exp)
     
     return list_clients
@@ -273,7 +286,9 @@ def apply_quantity_skew(list_clients, row_exp, list_skews):
     n_clients_by_skew = row_exp['num_clients'] // n_skews  
 
     dict_clients = [get_clients_data(n_clients_by_skew,
-                                    int(n_max_samples * skew),seed=row_exp['seed']) 
+                                    int(n_max_samples * skew),
+                                    row_exp['dataset'],
+                                    seed=row_exp['seed']) 
                                     for skew in list_skews] 
            
     list_clients = []

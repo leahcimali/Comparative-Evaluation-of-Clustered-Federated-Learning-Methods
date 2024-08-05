@@ -1,64 +1,31 @@
 exp_type,heterogeneity_type,num_clients,num_samples_by_label,num_clusters,centralized_epochs,federated_rounds,federated_local_epochs,seed
-server,features-distribution-skew,48,100,3,50,5,20,42
-server,concept-shift-on-features,48,100,4,50,5,20,42
-server,concept_shift_on_labels,48,100,6,50,5,20,42
-server,labels-distribution-skew,48,100,4,50,5,20,42
-server,labels-distribution-skew-balancing,48,100,4,50,5,20,42
-server,labels-distribution-skew-downsampled,48,100,4,50,5,20,42
-server,quantity-skew,240,20,3,50,5,10,42
-server,features-distribution-skew,240,20,3,10,5,10,42
-server,concept-shift-on-features,240,20,4,10,5,10,42
-server,concept_shift_on_labels,240,20,6,10,5,10,42
-server,labels-distribution-skew,240,20,4,10,5,10,42
-server,labels-distribution-skew-balancing,240,20,4,10,5,10,42
-server,labels-distribution-skew-downsampled,240,20,4,10,5,10,42
-server,quantity-skew,240,20,3,10,5,10,42
-server,features-distribution-skew,480,10,3,10,5,10,42
-server,concept-shift-on-features,480,10,4,10,5,10,42
-server,concept_shift_on_labels,480,10,6,10,5,10,42
-server,labels-distribution-skew,480,10,4,10,5,10,42
-server,labels-distribution-skew-balancing,480,10,4,10,5,10,42
-server,labels-distribution-skew-downsampled,480,10,4,10,5,10,42
-server,quantity-skew,480,10,3,10,5,10,42
-client,features-distribution-skew,48,100,3,50,5,20,42
-client,concept-shift-on-features,48,100,4,50,5,20,42
-client,concept_shift_on_labels,48,100,6,50,5,20,42
-client,labels-distribution-skew,48,100,4,50,5,20,42
-client,labels-distribution-skew-balancing,48,100,4,50,5,20,42
-client,labels-distribution-skew-downsampled,48,100,4,50,5,20,42
-client,quantity-skew,240,20,3,50,5,10,42
-client,features-distribution-skew,240,20,3,10,5,10,42
-client,concept-shift-on-features,240,20,4,10,5,10,42
-client,concept_shift_on_labels,240,20,6,10,5,10,42
-client,labels-distribution-skew,240,20,4,10,5,10,42
-client,labels-distribution-skew-balancing,240,20,4,10,5,10,42
-client,labels-distribution-skew-downsampled,240,20,4,10,5,10,42
-client,quantity-skew,240,20,3,10,5,10,42
-client,features-distribution-skew,480,10,3,10,5,10,42
-client,concept-shift-on-features,480,10,4,10,5,10,42
-client,concept_shift_on_labels,480,10,6,10,5,10,42
-client,labels-distribution-skew,480,10,4,10,5,10,42
-client,labels-distribution-skew-balancing,480,10,4,10,5,10,42
-client,labels-distribution-skew-downsampled,480,10,4,10,5,10,42
-client,quantity-skew,480,10,3,10,5,10,42
-benchmark,features-distribution-skew,48,100,3,50,5,20,42
-benchmark,concept-shift-on-features,48,100,4,50,5,20,42
-benchmark,concept_shift_on_labels,48,100,6,50,5,20,42
-benchmark,labels-distribution-skew,48,100,4,50,5,20,42
-benchmark,labels-distribution-skew-balancing,48,100,4,50,5,20,42
-benchmark,labels-distribution-skew-downsampled,48,100,4,50,5,20,42
-benchmark,quantity-skew,240,20,3,50,5,10,42
-benchmark,features-distribution-skew,240,20,3,10,5,10,42
-benchmark,concept-shift-on-features,240,20,4,10,5,10,42
-benchmark,concept_shift_on_labels,240,20,6,10,5,10,42
-benchmark,labels-distribution-skew,240,20,4,10,5,10,42
-benchmark,labels-distribution-skew-balancing,240,20,4,10,5,10,42
-benchmark,labels-distribution-skew-downsampled,240,20,4,10,5,10,42
-benchmark,quantity-skew,240,20,3,10,5,10,42
-benchmark,features-distribution-skew,480,10,3,10,5,10,42
-benchmark,concept-shift-on-features,480,10,4,10,5,10,42
-benchmark,concept_shift_on_labels,480,10,6,10,5,10,42
-benchmark,labels-distribution-skew,480,10,4,10,5,10,42
-benchmark,labels-distribution-skew-balancing,480,10,4,10,5,10,42
-benchmark,labels-distribution-skew-downsampled,480,10,4,10,5,10,42
-benchmark,quantity-skew,480,10,3,10,5,10,42
+server,mnist, features-distribution-skew,8,50,4,10,20,5,42
+server,mnist, concept-shift-on-features,8,50,4,10,20,5,42
+server,mnist, concept_shift_on_labels,8,50,4,10,20,5,42
+server,mnist, labels-distribution-skew,8,50,4,10,20,5,42
+server,mnist, quantity-skew,8,50,4,10,20,5,42
+server,fashion-mnist, features-distribution-skew,8,50,4,10,20,5,42
+server,fashion-mnist, concept-shift-on-features,8,50,4,10,20,5,42
+server,fashion-mnist, concept_shift_on_labels,8,50,4,10,20,5,42
+server,fashion-mnist, labels-distribution-skew,8,50,4,10,20,5,42
+server,fashion-mnist, quantity-skew,8,50,4,10,20,5,42
+server,cifar10, features-distribution-skew,8,50,4,10,20,5,42
+server,cifar10, concept-shift-on-features,8,50,4,10,20,5,42
+server,cifar10, concept_shift_on_labels,8,50,4,10,20,5,42
+server,cifar10, labels-distribution-skew,8,50,4,10,20,5,42
+server,cifar10, quantity-skew,8,50,4,10,20,5,42
+client,mnist, features-distribution-skew,8,50,4,10,20,5,42
+client,mnist, concept-shift-on-features,8,50,4,10,20,5,42
+client,mnist, concept_shift_on_labels,8,50,4,10,20,5,42
+client,mnist, labels-distribution-skew,8,50,4,10,20,5,42
+client,mnist, quantity-skew,8,50,4,10,20,5,42
+client,fashion-mnist, features-distribution-skew,8,50,4,10,20,5,42
+client,fashion-mnist, concept-shift-on-features,8,50,4,10,20,5,42
+client,fashion-mnist, concept_shift_on_labels,8,50,4,10,20,5,42
+client,fashion-mnist, labels-distribution-skew,8,50,4,10,20,5,42
+client,fashion-mnist, quantity-skew,8,50,4,10,20,5,42
+client,cifar10, features-distribution-skew,8,50,4,10,20,5,42
+client,cifar10, concept-shift-on-features,8,50,4,10,20,5,42
+client,cifar10, concept_shift_on_labels,8,50,4,10,20,5,42
+client,cifar10, labels-distribution-skew,8,50,4,10,20,5,42
+client,cifar10, quantity-skew,8,50,4,10,20,5,42

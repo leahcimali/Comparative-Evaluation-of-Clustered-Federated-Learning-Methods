@@ -4,17 +4,18 @@ import click
 @click.command()
 @click.option('--exp_type', help="The experiment type to run")
 @click.option('--heterogeneity_type', help="The data heterogeneity to test (or dataset)")
+@click.option('--dataset')
 @click.option('--num_clients', type=int)
 @click.option('--num_samples_by_label', type=int)
 @click.option('--num_clusters', type=int)
-@click.option('--centralized_epochs', type=int, default=50)
-@click.option('--federated_rounds', type=int, default=5)
-@click.option('--federated_local_epochs', type=int, default=20)
-@click.option('--seed', type=int, default=42)
+@click.option('--centralized_epochs', type=int)
+@click.option('--federated_rounds', type=int)
+@click.option('--federated_local_epochs', type=int)
+@click.option('--seed', type=int)
 
 
 
-def main_driver(exp_type, heterogeneity_type, num_clients, num_samples_by_label, num_clusters, centralized_epochs, federated_rounds, federated_local_epochs, seed):
+def main_driver(exp_type, dataset, heterogeneity_type, num_clients, num_samples_by_label, num_clusters, centralized_epochs, federated_rounds, federated_local_epochs, seed):
 
     from pathlib import Path
     import pandas as pd
@@ -24,7 +25,7 @@ def main_driver(exp_type, heterogeneity_type, num_clients, num_samples_by_label,
 
     setup_logging()
 
-    row_exp = pd.Series({"exp_type": exp_type, "heterogeneity_type": heterogeneity_type, "num_clients": num_clients,
+    row_exp = pd.Series({"exp_type": exp_type, "dataset": dataset, "heterogeneity_type": heterogeneity_type, "num_clients": num_clients,
                "num_samples_by_label": num_samples_by_label, "num_clusters": num_clusters, "centralized_epochs": centralized_epochs,
                "federated_rounds": federated_rounds, "federated_local_epochs": federated_local_epochs, "seed": seed})
     

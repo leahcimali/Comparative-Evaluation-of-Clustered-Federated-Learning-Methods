@@ -89,15 +89,17 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 def run_benchmark(list_clients, row_exp, output_name, main_model):
     
     import pandas as pd    
-    from src.models import SimpleLinear
+    from src.models import SimpleLinear, SimpleConv
 
+    main_model = SimpleLinear() if 'mnist' in row_exp['dataset'] else SimpleConv()
+    
     list_exps = ['global-centralized', 'global-federated', 'pers-centralized', 'pers-federated'] 
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
   
     for training_type in list_exps: 
         
-        curr_model = main_model if 'federated' in training_type else SimpleLinear()
+        curr_model = main_model if 'federated' in training_type else main_model
 
         if 'pers' in training_type:
 
@@ -211,6 +213,10 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
 
         # Iterate over the training dataset
         for inputs, labels in train_loader:
+
+            if (row_exp['dataset'] == "cifar10"):
+                inputs = inputs.permute(0,3,1,2)
+
             optimizer.zero_grad()  # Zero the gradients
             outputs = main_model(inputs)  # Forward pass
             _, predicted = torch.max(outputs, 1)

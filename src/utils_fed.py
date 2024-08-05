@@ -157,13 +157,13 @@ def k_means_clustering(client_list,num_clusters):
 
 # FOR CLIENT-SIDE CFL 
 
-def init_server_cluster(my_server,client_list, row_exp, p_expert_opinion=None):
+def init_server_cluster(my_server, client_list, row_exp, p_expert_opinion=None):
     
     """
     Assign clients to initial clusters using a given distribution or completely at random. 
     """
     
-    from src.models import SimpleLinear
+    from src.models import SimpleLinear, SimpleConv
     import numpy as np
     torch.manual_seed(row_exp['seed'])
 
@@ -176,8 +176,12 @@ def init_server_cluster(my_server,client_list, row_exp, p_expert_opinion=None):
     p_rest = (1 - p_expert_opinion) / (row_exp['num_clusters'] - 1)
 
     my_server.num_clusters = row_exp['num_clusters']
-        
-    my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(row_exp['num_clusters'])} 
+    
+    if 'mnist' in row_exp['dataset']:
+        my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(row_exp['num_clusters'])}
+    else:
+        my_server.clusters_models = {cluster_id: SimpleConv(h1=200) for cluster_id in range(row_exp['num_clusters'])}
+
     
     for client in client_list:
     
