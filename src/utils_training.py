@@ -250,7 +250,7 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
 
     return main_model, accuracy
 
-def loss_calculation(model, train_loader, seed): 
+def loss_calculation(model, train_loader, row_exp): 
     import torch
     import torch.nn as nn
 
@@ -266,10 +266,14 @@ def loss_calculation(model, train_loader, seed):
     total_loss = 0.0
     total_samples = 0
 
-    torch.manual_seed(seed)
+    torch.manual_seed(row_exp['seed'])
     # Iterate through the training data loader
     with torch.no_grad():
         for inputs, targets in train_loader:
+
+            if row_exp['dataset'] == "cifar10":
+                inputs = inputs.permute(0,3,1,2)
+
             # Forward pass
             outputs = model(inputs)
 

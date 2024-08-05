@@ -208,7 +208,7 @@ def set_client_cluster(my_server, client_list, row_exp):
         
         for cluster_id in range(row_exp['num_clusters']):
         
-            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'], seed=row_exp['seed'])
+            cluster_loss = loss_calculation(my_server.clusters_models[cluster_id], client.data_loader['train'], row_exp)
         
             cluster_losses.append(cluster_loss)
         
