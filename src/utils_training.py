@@ -210,7 +210,7 @@ def train_federated(main_model, list_clients, row_exp):
 def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
 
     criterion = nn.CrossEntropyLoss()
-    optimizer=optim.Adam
+    optimizer=optim.SGD
     optimizer = optimizer(main_model.parameters(), lr=0.01) 
     torch.manual_seed(row_exp['seed'])
 
