@@ -163,7 +163,7 @@ def init_server_cluster(my_server, client_list, row_exp, p_expert_opinion=None):
     Assign clients to initial clusters using a given distribution or completely at random. 
     """
     
-    from src.models import SimpleLinear, SimpleConv
+    from src.models import SimpleLinear
     import numpy as np
     torch.manual_seed(row_exp['seed'])
 
@@ -177,11 +177,8 @@ def init_server_cluster(my_server, client_list, row_exp, p_expert_opinion=None):
 
     my_server.num_clusters = row_exp['num_clusters']
     
-    if 'mnist' in row_exp['dataset']:
-        my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(row_exp['num_clusters'])}
-    else:
-        my_server.clusters_models = {cluster_id: SimpleConv() for cluster_id in range(row_exp['num_clusters'])}
-
+    my_server.clusters_models = {cluster_id: SimpleLinear(h1=200) for cluster_id in range(row_exp['num_clusters'])}
+    
     
     for client in client_list:
     

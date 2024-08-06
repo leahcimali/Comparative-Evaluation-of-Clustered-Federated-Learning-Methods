@@ -27,16 +27,17 @@ def create_label_dict(dataset, seed = 42) :
     Create a dictionary of dataset samples by labels 
     """
     import sys
-    from tensorflow.keras.datasets import mnist, fashion_mnist, cifar10
+    from tensorflow.keras.datasets import mnist, fashion_mnist
+    from extra_keras_datasets import kmnist
 
     if dataset == "fashion-mnist":
         (x_train, y_train), _ = fashion_mnist.load_data()
     elif dataset == 'mnist':
         (x_train, y_train), _ = mnist.load_data()
-    elif dataset == 'cifar10':
-        (x_train, y_train), _ = cifar10.load_data()
+    elif dataset == 'kmnist':
+        (x_train, y_train), _ = kmnist.load_data()
     else:
-        sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'cifar10']")    
+        sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'kmnist']")    
 
     
     label_dict = {}
@@ -92,20 +93,22 @@ def rotate_images(client, rotation):
             rotated_images.append(rotated_img)   
         client.data['x'] = np.array(rotated_images)
 
-def data_preparation(client, seed):
+def data_preparation(client, row_exp):
     """
     Train test split of a client's data and create onf dataloaders for local model training
     """
 
     from sklearn.model_selection import train_test_split
     from torch.utils.data import DataLoader, TensorDataset
-   
-    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=seed,stratify=client.data['y'])
+
+    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'],stratify=client.data['y'])
 
     x_train, x_test = x_train/255.0 , x_test/255.0
 
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
     x_train_tensor.to(device)
+
+
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
     y_train_tensor.to(device)
 
@@ -113,14 +116,13 @@ def data_preparation(client, seed):
     x_test_tensor.to(device)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     y_test_tensor.to(device)
-    
 
 
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=64)    
+    test_loader = DataLoader(test_dataset, batch_size=32)    
 
     setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
@@ -155,10 +157,10 @@ def get_dataset_heterogeneities(heterogeneity_type):
 
 def setup_experiment(row_exp):
 
-    from src.models import SimpleLinear, SimpleConv
+    from src.models import SimpleLinear
     
     list_clients = []
-    model_server = Server(SimpleLinear()) if 'mnist' in row_exp['dataset'] else Server(SimpleConv())
+    model_server = Server(SimpleLinear())
 
     dict_clients = get_clients_data(row_exp['num_clients'],
                                     row_exp['num_samples_by_label'],
@@ -213,7 +215,7 @@ def apply_label_swap(list_clients, row_exp, list_swaps):
         for client in list_clients_swapped:
             
             client = swap_labels(list_swaps[i],client, str(i))
-            data_preparation(client, row_exp['seed'])
+            data_preparation(client, row_exp)
 
         list_clients[start_index:end_index] = list_clients_swapped
 
@@ -243,7 +245,7 @@ def apply_rotation(list_clients, row_exp):
 
             rotate_images(client , rotation_angle)
             
-            data_preparation(client, row_exp['seed'])
+            data_preparation(client, row_exp)
             
             setattr(client,'heterogeneity_class', f"rot_{rotation_angle}")
 
@@ -269,7 +271,7 @@ def apply_labels_skew(list_clients, row_exp, list_skews, list_ratios):
             
             unbalancing(client, list_skews[i], list_ratios[i])
             
-            data_preparation(client, row_exp['seed'])
+            data_preparation(client, row_exp)
 
             setattr(client,'heterogeneity_class', f"lbl_skew_{str(i)}")
 
@@ -309,7 +311,7 @@ def apply_quantity_skew(list_clients, row_exp, list_skews):
 
     for client in list_clients :
 
-        data_preparation(client, row_exp['seed'])
+        data_preparation(client, row_exp)
 
     
     return list_clients
@@ -341,7 +343,7 @@ def apply_features_skew(list_clients, row_exp) :
             else :
                 client.heterogeneity_class = 'none'
 
-            data_preparation(client, row_exp['seed'])
+            data_preparation(client, row_exp)
 
         list_clients[start_index:end_index] = list_clients_rotated
     

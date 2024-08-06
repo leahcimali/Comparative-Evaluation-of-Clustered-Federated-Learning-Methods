@@ -93,9 +93,9 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 def run_benchmark(list_clients, row_exp, output_name, main_model):
     
     import pandas as pd    
-    from src.models import SimpleLinear, SimpleConv
+    from src.models import SimpleLinear
 
-    main_model = SimpleLinear() if 'mnist' in row_exp['dataset'] else SimpleConv()
+    main_model = SimpleLinear()
     
     list_exps = ['global-centralized', 'global-federated', 'pers-centralized', 'pers-federated'] 
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
@@ -227,9 +227,6 @@ def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
         # Iterate over the training dataset
         for inputs, labels in train_loader:
 
-            if (row_exp['dataset'] == "cifar10"):
-                inputs = inputs.permute(0,3,1,2)
-
             optimizer.zero_grad()  # Zero the gradients
             outputs = main_model(inputs)  # Forward pass
             _, predicted = torch.max(outputs, 1)
@@ -271,9 +268,6 @@ def loss_calculation(model, train_loader, row_exp):
     with torch.no_grad():
         for inputs, targets in train_loader:
 
-            if row_exp['dataset'] == "cifar10":
-                inputs = inputs.permute(0,3,1,2)
-
             # Forward pass
             outputs = model(inputs)
 
@@ -306,9 +300,6 @@ def test_model(model, test_loader, row_exp):
     with torch.no_grad():
         # Iterate over the test dataset
         for inputs, labels in test_loader:
-
-            if row_exp['dataset'] == "cifar10":
-                inputs = inputs.permute(0,3,1,2)
 
             # Forward pass
             outputs = model(inputs)
