@@ -102,7 +102,7 @@ def run_benchmark(list_clients, row_exp, output_name, main_model=SimpleLinear())
   
     for training_type in list_exps: 
         
-        curr_model = main_model if 'federated' in training_type else main_model
+        curr_model = main_model if 'federated' in training_type else SimpleLinear()
 
         if 'pers' in training_type:
 

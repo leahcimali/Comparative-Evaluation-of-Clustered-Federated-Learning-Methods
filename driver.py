@@ -86,8 +86,8 @@ def launch_experiment(model_server, list_clients, row_exp, output_name):
             run_cfl_server_side(model_server, list_clients, row_exp, output_name)
             
         else:
-        
-            raise Exception(f"Unrecognized experiement type {row_exp['exp_type']}. Please check config file and try again.")
+            str_exp_type = row_exp['exp_type']
+            raise Exception(f"Unrecognized experiement type {str_exp_type}. Please check config file and try again.")
         
         return
 
