@@ -133,18 +133,18 @@ def get_dataset_heterogeneities(heterogeneity_type):
 
     dict_params = {}
 
-    if heterogeneity_type == "labels-distribution-skew":
-        dict_params['skews'] = [[1,2],[3,4],[5,6],[7,8]]
-        dict_params['ratios'] = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]]
+    #if heterogeneity_type == "labels-distribution-skew":
+    #    dict_params['skews'] = [[1,2],[3,4],[5,6],[7,8]]
+    #    dict_params['ratios'] = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]]
 
     #elif heterogeneity_type  == "labels-distribution-skew-balancing":
     #    dict_params['skews'] = [[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]]
     #    dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]]
         
-    #if heterogeneity_type == 'labels-distribution-skew':
-    #    dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
-    #    dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
-    #                           [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
+    if heterogeneity_type == 'labels-distribution-skew':
+        dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
+        dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
+                               [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
     
     elif heterogeneity_type == 'concept-shift-on-labels':
         dict_params['swaps'] = [(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)]
