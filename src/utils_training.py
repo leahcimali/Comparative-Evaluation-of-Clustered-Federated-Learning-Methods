@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from src.models import SimpleLinear
+
 lr = 0.01
 
 
@@ -90,12 +92,9 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
     return results
     
 
-def run_benchmark(list_clients, row_exp, output_name, main_model):
+def run_benchmark(list_clients, row_exp, output_name, main_model=SimpleLinear()):
     
-    import pandas as pd    
-    from src.models import SimpleLinear
-
-    main_model = SimpleLinear()
+    import pandas as pd 
     
     list_exps = ['global-centralized', 'global-federated', 'pers-centralized', 'pers-federated'] 
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
