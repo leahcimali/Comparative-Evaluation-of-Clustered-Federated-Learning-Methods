@@ -114,7 +114,7 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     
     ax.set_zlabel('Number of Clients')
     
-    cmap = plt.get_cmap('gnuplot')
+    cmap = plt.get_cmap('hsv')
     colors = [cmap(i) for i in np.linspace(0, 1, len(x_heterogeneities))]
 
     ax.bar3d(x_heterogeneities,y_clusters,z,dx,dy,dz_nclients, color=[colors[i] for i in x_heterogeneities])
@@ -122,6 +122,7 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     plt.title(title, fontdict=None, loc='center', pad=None)
     
     plt.savefig('results/plots/histogram_' + title + '.png')
+    plt.close()
 
 
 def normalize_results(results_accuracy, results_std):
@@ -160,10 +161,9 @@ def summarize_results():
             results_accuracy, results_std = normalize_results(results_accuracy, results_std)
   
             list_params = path.stem.split('_')         
-            dict_exp_results = {"exp_type" : list_params[0], "dataset_type": list_params[1], "number_of_clients": list_params[2],
-                                    "samples by_client": list_params[3], "num_clusters": list_params[4], "centralized_epochs": list_params[5],
-                                    "federated_rounds": list_params[6], "federated_local_epochs": list_params[7], "seed": list_params[8],
-                                    "accuracy": results_accuracy, "std": results_std}
+            dict_exp_results = {"exp_type" : list_params[0], "dataset": list_params[1], "dataset_type": list_params[2], "number_of_clients": list_params[3],
+                                    "samples by_client": list_params[4], "num_clusters": list_params[5], "centralized_epochs": list_params[6],
+                                    "federated_rounds": list_params[7],"accuracy": results_accuracy, "std": results_std}
 
             try:
                 
@@ -177,7 +177,7 @@ def summarize_results():
             
             except:
 
-                print(f"Warning: Could not calculate cluster metrics for file {path}",lvl="warning")
+                print(f"Warning: Could not calculate cluster metrics for file {path}")
                 
     
             list_results.append(dict_exp_results)

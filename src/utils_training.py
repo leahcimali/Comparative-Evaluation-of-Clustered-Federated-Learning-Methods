@@ -96,7 +96,7 @@ def run_benchmark(list_clients, row_exp, output_name, main_model=SimpleLinear())
     
     import pandas as pd 
     
-    list_exps = ['global-centralized', 'global-federated', 'pers-centralized', 'pers-federated'] 
+    list_exps = ['global-federated', 'pers-centralized'] 
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
 
   
