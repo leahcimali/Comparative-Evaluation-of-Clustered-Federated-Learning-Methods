@@ -199,8 +199,6 @@ def train_federated(main_model, list_clients, row_exp):
 
             accs.append(curr_acc)
 
-        print(f"accuracy at round {i}:", np.mean(accs))
-
         fedavg(main_model, list_clients)
 
     return main_model
