@@ -1,7 +1,9 @@
 experiment_1.txt
 *.py~
 results/*
+.vscode/*
 src/__pycache__/*
 info.log
 *.ipynb
 launch.json
+backup_results/*

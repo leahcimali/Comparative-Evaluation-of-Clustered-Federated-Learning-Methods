@@ -87,7 +87,7 @@ def calc_global_metrics(labels_true, labels_pred):
 
     AMI_score = adjusted_mutual_info_score(labels_true, labels_pred) 
     
-    dict_metrics = {"ARI": ARI_score, "AMI": AMI_score, "homogeneity": homogeneity_score, "completness": completness_score, "v_measure": v_measure}
+    dict_metrics = {"ARI": ARI_score, "AMI": AMI_score, "hom": homogeneity_score, "cmplt": completness_score, "vm": v_measure}
     
     return dict_metrics
 

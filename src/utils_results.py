@@ -140,6 +140,7 @@ def summarize_results():
 
     from pathlib import Path
     import pandas as pd
+    import numpy as np
     from numpy import mean, std
 
     from metrics import calc_global_metrics
@@ -159,11 +160,14 @@ def summarize_results():
             results_std = std(list(df_exp_results['accuracy']))
 
             results_accuracy, results_std = normalize_results(results_accuracy, results_std)
-  
-            list_params = path.stem.split('_')         
+
+            accuracy =  "{:.2f}".format(results_accuracy) + " \\pm " +   "{:.2f}".format(results_std)
+
+            list_params = path.stem.split('_')      
+
             dict_exp_results = {"exp_type" : list_params[0], "dataset": list_params[1], "dataset_type": list_params[2], "number_of_clients": list_params[3],
                                     "samples by_client": list_params[4], "num_clusters": list_params[5], "centralized_epochs": list_params[6],
-                                    "federated_rounds": list_params[7],"accuracy": results_accuracy, "std": results_std}
+                                    "federated_rounds": list_params[7],"accuracy": accuracy}
 
             try:
                 
@@ -183,8 +187,12 @@ def summarize_results():
             list_results.append(dict_exp_results)
             
     df_results = pd.DataFrame(list_results)
-
-    df_results.to_csv("results/summarized_results.csv", float_format='%.2f')
+    
+    df_results.sort_values(['dataset_type',  'dataset', 'exp_type', 'number_of_clients'], inplace=True)
+    
+    df_results = df_results[['exp_type', 'dataset', 'num_clusters', 'dataset_type', "accuracy", "ARI", "AMI", "hom", "cmplt", "vm"]]
+    
+    df_results.to_csv("results/summarized_results.csv", float_format='%.2f', index=False, na_rep="n/a")
 
     return
 
