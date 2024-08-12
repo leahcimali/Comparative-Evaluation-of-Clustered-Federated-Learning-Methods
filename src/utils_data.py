@@ -1,12 +1,20 @@
 import torch
 import numpy as np
-from tensorflow.keras.datasets import mnist
+
+from collections import Counter
+import pandas as pd
+import numpy as np
+
 from src.fedclass import Client, Server
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def shuffle(array,seed=42): 
     # Function to shuffle the samples 
     # Generate a list of shuffled indices
+
+    np.random.seed(seed)
+
     shuffled_indices = np.arange(array.shape[0])
     np.random.shuffle(shuffled_indices)
 
@@ -14,29 +22,45 @@ def shuffle(array,seed=42):
     shuffled_arr = array[shuffled_indices].copy()
     return shuffled_arr
 
-def create_mnist_label_dict(seed = 42) :
-    # Create a dictionary of mnist samples by labels 
-    from tensorflow.keras.datasets import mnist
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+def create_label_dict(dataset, seed = 42) :
+    """
+    Create a dictionary of dataset samples by labels 
+    """
+    import sys
+    from tensorflow.keras.datasets import mnist, fashion_mnist
+    from extra_keras_datasets import kmnist
 
-# Seperating Mnist by labels
+    if dataset == "fashion-mnist":
+        (x_train, y_train), _ = fashion_mnist.load_data()
+    elif dataset == 'mnist':
+        (x_train, y_train), _ = mnist.load_data()
+    elif dataset == 'kmnist':
+        (x_train, y_train), _ = kmnist.load_data()
+    else:
+        sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'kmnist']")    
+
+    
     label_dict = {}
     for label in range(10):
+       
         label_indices = np.where(y_train == label)[0]
+       
         label_samples_x = x_train[label_indices]
-        # Dictionnary that contains all samples of the labels to associate key 
+          
         label_dict[label] = shuffle(label_samples_x, seed)
         
     return label_dict
 
-def data_distribution(number_of_clients, samples_by_client_of_each_labels,seed = 42):
+
+
+def get_clients_data(num_clients, num_samples_by_label, dataset, seed = 42):
     """
-    Distribute Mnist Dataset evenly accross number_of_clients clients
+    Distribute Dataset evenly accross num_clients clients
     ----------
-    number_of_clients : int
+    num_clients : int
         number of client of interest
         
-    samples_by_client_of_each_labels : int
+    num_samples_by_label : int
         number of samples of each labels by clients
     Returns
     -------
@@ -44,24 +68,24 @@ def data_distribution(number_of_clients, samples_by_client_of_each_labels,seed =
         Dictionnary where each key correspond to a client index. The samples will be contained in the 'x' key and the target in 'y' key
     """
     
-    label_dict = create_mnist_label_dict(seed)
+    label_dict = create_label_dict(dataset, seed)
     # Initialize dictionary to store client data
     clients_dictionary = {}
     client_dataset = {}
-    for client in range(number_of_clients):
+    for client in range(num_clients):
         clients_dictionary[client] = {}    
         for label in range(10):
-            clients_dictionary[client][label]= label_dict[label][client*samples_by_client_of_each_labels:(client+1)*samples_by_client_of_each_labels]
-    for client in range(number_of_clients):
+            clients_dictionary[client][label]= label_dict[label][client*num_samples_by_label:(client+1)*num_samples_by_label]
+    for client in range(num_clients):
         client_dataset[client] = {}    
         client_dataset[client]['x'] = np.concatenate([clients_dictionary[client][label] for label in range(10)], axis=0)
         client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
     return client_dataset
 
-def rotate_images(client,rotation):
+def rotate_images(client, rotation):
     # Rotate images, used of concept shift on features
     images = client.data['x']
-    setattr(client,'heterogeneity',str(rotation))
+    
     if rotation >0 :
         rotated_images = []
         for img in images:
@@ -69,44 +93,268 @@ def rotate_images(client,rotation):
             rotated_images.append(rotated_img)   
         client.data['x'] = np.array(rotated_images)
 
-def data_preparation(client):
-    # Train test split of a client's data and create onf dataloaders for local model training
+def data_preparation(client, row_exp):
+    """
+    Train test split of a client's data and create onf dataloaders for local model training
+    """
+
     from sklearn.model_selection import train_test_split
-    from torch.utils.data import DataLoader, Dataset,TensorDataset
-    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=42,stratify=client.data['y'])
+    from torch.utils.data import DataLoader, TensorDataset
+
+    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'],stratify=client.data['y'])
+
     x_train, x_test = x_train/255.0 , x_test/255.0
+
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
+    x_train_tensor.to(device)
+
+
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
+    y_train_tensor.to(device)
+
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
+    x_test_tensor.to(device)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
+    y_test_tensor.to(device)
+
+
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=32)
+    test_loader = DataLoader(test_dataset, batch_size=32)    
+
     setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
     setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
     
 
-def setup_experiment_rotation(model,number_of_clients,number_of_samples_by_clients, seed =42) :
-    # Setup server and clients for concept shift on features
-    clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
-    clientlist = []
-    for id in range(number_of_clients):
-        clientlist.append(Client(id,clientdata[id]))
-    my_server = Server(model)
-    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
-    n = number_of_clients//4
-    for i in range(4):
-        start_index = i * n
-        end_index = (i + 1) * n
-        clientlistrotated = clientlist[start_index:end_index]
-        for client in clientlistrotated:
-            rotate_images(client,90*i)
-            data_preparation(client)
-        clientlist[start_index:end_index] = clientlistrotated
-    return my_server, clientlist
 
-def label_swap(labels, client):
+def get_dataset_heterogeneities(heterogeneity_type):
+
+    dict_params = {}
+
+    #if heterogeneity_type == "labels-distribution-skew":
+    #    dict_params['skews'] = [[1,2],[3,4],[5,6],[7,8]]
+    #    dict_params['ratios'] = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]]
+
+    #elif heterogeneity_type  == "labels-distribution-skew-balancing":
+    #    dict_params['skews'] = [[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]]
+    #    dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]]
+        
+    if heterogeneity_type == 'labels-distribution-skew':
+        dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
+        dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
+                               [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]]
+    
+    elif heterogeneity_type == 'concept-shift-on-labels':
+        dict_params['swaps'] = [(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)]
+
+    elif heterogeneity_type == 'quantity-skew':
+        dict_params['skews'] = [0.1,0.2,0.6,1]
+
+    return dict_params
+
+
+def setup_experiment(row_exp):
+
+    from src.models import SimpleLinear
+    
+    list_clients = []
+    model_server = Server(SimpleLinear())
+
+    dict_clients = get_clients_data(row_exp['num_clients'],
+                                    row_exp['num_samples_by_label'],
+                                    row_exp['dataset'],
+                                    row_exp['seed'])    
+    
+    for i in range(row_exp['num_clients']):
+        list_clients.append(Client(i, dict_clients[i]))
+
+    list_clients = add_clients_heterogeneity(list_clients, row_exp)
+   
+    return model_server, list_clients
+
+
+
+def add_clients_heterogeneity(list_clients, row_exp):
+    
+    dict_params = get_dataset_heterogeneities(row_exp['heterogeneity_type'])
+
+    if row_exp['heterogeneity_type']  == "concept-shift-on-features": # rotations
+        list_clients = apply_rotation(list_clients, row_exp)
+    
+    elif row_exp['heterogeneity_type'] == "concept-shift-on-labels": #label swaps
+        list_clients = apply_label_swap(list_clients, row_exp, dict_params['swaps'])
+    
+    elif row_exp['heterogeneity_type'] == "quantity-skew": #less images altogether for certain clients
+        list_clients = apply_quantity_skew(list_clients, row_exp, dict_params['skews']) 
+    
+    elif row_exp['heterogeneity_type'] == "labels-distribution-skew":
+        list_clients = apply_labels_skew(list_clients, row_exp, dict_params['skews'], # less images of certain labels
+                                          dict_params['ratios'])
+    
+    elif row_exp['heterogeneity_type'] == "features-distribution-skew": #change image qualities
+        list_clients = apply_features_skew(list_clients, row_exp)
+    
+    return list_clients
+
+
+
+def apply_label_swap(list_clients, row_exp, list_swaps):
+   
+    n_swaps_types = len(list_swaps)
+    n_clients_by_swaps_type = row_exp['num_clients'] // n_swaps_types
+    
+    for i in range(n_swaps_types):
+        
+        start_index = i * n_clients_by_swaps_type
+        end_index = (i + 1) * n_clients_by_swaps_type
+
+        list_clients_swapped = list_clients[start_index:end_index]
+
+        for client in list_clients_swapped:
+            
+            client = swap_labels(list_swaps[i],client, str(i))
+            data_preparation(client, row_exp)
+
+        list_clients[start_index:end_index] = list_clients_swapped
+
+    list_clients  = list_clients[:end_index]
+
+    return list_clients
+
+
+
+
+def apply_rotation(list_clients, row_exp):
+
+    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
+    n_rotation_types = 4
+    n_clients_by_rotation_type = row_exp['num_clients'] // n_rotation_types #TODO check edge cases where n_clients < n_rotation_types
+
+    for i in range(n_rotation_types):
+        
+        start_index = i * n_clients_by_rotation_type
+        end_index = (i + 1) * n_clients_by_rotation_type
+
+        list_clients_rotated = list_clients[start_index:end_index]
+
+        for client in list_clients_rotated:
+
+            rotation_angle = (360 // n_rotation_types) * i
+
+            rotate_images(client , rotation_angle)
+            
+            data_preparation(client, row_exp)
+            
+            setattr(client,'heterogeneity_class', f"rot_{rotation_angle}")
+
+        list_clients[start_index:end_index] = list_clients_rotated
+
+    list_clients  = list_clients[:end_index]
+    return list_clients
+
+
+def apply_labels_skew(list_clients, row_exp, list_skews, list_ratios):
+    
+    n_skews = len(list_skews)
+    n_clients_by_skew = row_exp['num_clients'] // n_skews 
+
+    for i in range(n_skews):
+
+        start_index = i * n_clients_by_skew
+        end_index = (i + 1) * n_clients_by_skew
+
+        list_clients_skewed = list_clients[start_index:end_index]
+
+        for client in list_clients_skewed:
+            
+            unbalancing(client, list_skews[i], list_ratios[i])
+            
+            data_preparation(client, row_exp)
+
+            setattr(client,'heterogeneity_class', f"lbl_skew_{str(i)}")
+
+        list_clients[start_index:end_index] = list_clients_skewed
+    
+    list_clients = list_clients[:end_index]
+
+    return list_clients
+
+
+
+def apply_quantity_skew(list_clients, row_exp, list_skews):
+    
+    # Setup server and clients for quantity skew experiment
+    # Skew list create for each element an equal subset of clients with the corresponding percentage of the client data
+    
+    n_max_samples = 100 # TODO: parameterize by dataset
+
+    n_skews = len(list_skews)
+    n_clients_by_skew = row_exp['num_clients'] // n_skews  
+
+    dict_clients = [get_clients_data(n_clients_by_skew,
+                                    int(n_max_samples * skew),
+                                    row_exp['dataset'],
+                                    seed=row_exp['seed']) 
+                                    for skew in list_skews] 
+           
+    list_clients = []
+
+    for c in range(n_clients_by_skew):
+
+        for s in range(len(list_skews)):
+            
+            client = Client(c * len(list_skews)+ s, dict_clients[s][c])
+            setattr(client,'heterogeneity_class', str(s))
+            list_clients.append(client)
+
+    for client in list_clients :
+
+        data_preparation(client, row_exp)
+
+    
+    return list_clients
+
+
+
+def apply_features_skew(list_clients, row_exp) :
+    # Setup server and clients for features distribution skew experiments
+    
+    n_skew_types = 3
+    n_clients_by_skew = row_exp['num_clients'] // n_skew_types  
+    
+    for i in range(n_skew_types):
+
+        start_index = i * n_clients_by_skew
+        end_index = (i + 1) * n_clients_by_skew
+
+        list_clients_rotated = list_clients[start_index:end_index]
+
+        for client in list_clients_rotated:
+            if client.id % n_skew_types == 1:
+                client.data['x'] = erode_images(client.data['x'])
+                client.heterogeneity_class = 'erosion'
+
+            elif client.id % n_skew_types == 2 :
+                client.data['x'] = dilate_images(client.data['x'])
+                client.heterogeneity_class = 'dilatation'
+
+            else :
+                client.heterogeneity_class = 'none'
+
+            data_preparation(client, row_exp)
+
+        list_clients[start_index:end_index] = list_clients_rotated
+    
+    list_clients = list_clients[:end_index]
+    
+    return list_clients
+
+
+
+def swap_labels(labels, client, heterogeneity_class):
+
     # Function for label swapping use for concept shift on labels
     # labels : tuple of labels to swap
     newlabellist = client.data['y'] 
@@ -114,48 +362,12 @@ def label_swap(labels, client):
     newlabellist[newlabellist==labels[0]]=labels[1]
     newlabellist[otherlabelindex] = labels[0]
     client.data['y']= newlabellist
-    setattr(client,'heterogeneity', str(labels))
-    
-def setup_experiment_labelswap(model,number_of_clients,number_of_samples_by_clients, swaplist=[(1,7),(2,7),(4,7),(3,8),(5,6),(7,9)],number_of_cluster=1,seed =42):
-    # Setup server and clients for concept shift on labels
-    # Swap list will create a equal subset of clients where each labels in the tuples are swapped  
-    clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
-    clientlist = []
-    for id in range(number_of_clients):
-        clientlist.append(Client(id,clientdata[id]))
-    my_server = Server(model)
-    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
-    n = number_of_clients // len(swaplist)
-    for i in range(number_of_cluster):
-        start_index = i * n
-        end_index = (i + 1) * n
-        clientlistswap = clientlist[start_index:end_index]
-        for client in clientlistswap:
-            label_swap(swaplist[i],client)
-            data_preparation(client)
-        clientlist[start_index:end_index] = clientlistswap
-    return my_server, clientlist
+    setattr(client,'heterogeneity_class', heterogeneity_class)
+    return client
 
-def setup_experiment_quantity_skew(model,number_of_client=200,number_of_max_samples=100,skewlist=[0.1,0.2,0.6,1], seed = 42):
-    # Setup server and clients for quantity skew experiment
-    # Skew list create for each element an equal subset of clients with the corresponding percentage of the client data
-    number_of_skew = len(skewlist)
-    number_of_client_by_skew = number_of_client//number_of_skew 
-    clientdata = [data_distribution(number_of_client_by_skew,int(number_of_max_samples*skew),seed) for skew in skewlist]        
-    clientlist = []
-    for id in range(number_of_client_by_skew):
-        for skew_id in range(len(skewlist)):
-            client = Client(id*len(skewlist)+ skew_id,clientdata[skew_id][id])
-            setattr(client,'heterogeneity',str(skewlist[skew_id]))
-            clientlist.append(client)
-    for client in clientlist : 
-        data_preparation(client)
-    my_server = Server(model)
-    return my_server, clientlist
-    
 def centralize_data(clientlist):
     # Centralize data of the federated learning setup for central model comparison
-    from torch.utils.data import DataLoader,Dataset,TensorDataset
+    from torch.utils.data import DataLoader,TensorDataset
     x_train = np.concatenate([clientlist[id].train_test['x_train'] for id in range(len(clientlist))],axis = 0)
     x_test = np.concatenate([clientlist[id].train_test['x_test'] for id in range(len(clientlist))],axis = 0)
     y_train = np.concatenate([clientlist[id].train_test['y_train'] for id in range(len(clientlist))],axis = 0)
@@ -170,103 +382,34 @@ def centralize_data(clientlist):
     test_loader = DataLoader(test_dataset, batch_size=64)
     return train_loader, test_loader
 
-from collections import Counter
-import pandas as pd
-import numpy as np
-from imblearn.datasets import make_imbalance
-import matplotlib.pyplot as plt
+
 
 def ratio_func(y, multiplier, minority_class):
     # downsample a label by multiplier
     target_stats = Counter(y)
     return {minority_class: int(multiplier * target_stats[minority_class])}
 
-def unbalancing(client,labels_list ,ratio_list, plot = False):
+def unbalancing(client,labels_list ,ratio_list):
     # downsample the dataset of a client with each elements of the labels_list will be downsample with the corresponding ration of ratio_list
     from imblearn.datasets import make_imbalance
     x_train = client.data['x']
     y_train = client.data['y']
-    X_resampled = x_train.reshape(-1, 784) # flatten the images 
+    (nsamples, i_dim,j_dim) = x_train.shape
+    X_resampled = x_train.reshape(-1, i_dim * j_dim) # flatten the images 
     y_resampled = y_train
+    
     for i in range(len(labels_list)):
         X = pd.DataFrame(X_resampled)
         X_resampled, y_resampled = make_imbalance(X,
                 y_resampled,
                 sampling_strategy=ratio_func,
                 **{"multiplier": ratio_list[i], "minority_class": labels_list[i]})
-    if plot == True : 
-        plt.hist(y_resampled, bins=np.arange(min(y), 11), align='left', rwidth=1)
-        plt.title("Ratio ")
-        plt.show()
+
     ### unflatten the images 
-    client.data['x'] = X_resampled.to_numpy().reshape(-1,28,28)
+    client.data['x'] = X_resampled.to_numpy().reshape(-1, i_dim, j_dim)
     client.data['y'] = y_resampled
-    setattr(client,'heterogeneity',str((labels_list,ratio_list)))
-
-
-def setup_experiment_labels_skew(model,number_of_clients=48,number_of_samples_by_clients=50,skewlist=[[1,2],[3,4],[5,6],[7,8]], ratiolist = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]],seed = 42):
-    # Setup server and clients for label distribution skew, each element of the skewlist will be downsamples by the corresponding ratio of rationlist 
-    clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
-    clientlist = []
-    for id in range(number_of_clients):
-        clientlist.append(Client(id,clientdata[id]))
-    my_server = Server(model)
-    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
-    n = number_of_clients // len(skewlist)
-    for i in range(len(skewlist)):
-        start_index = i * n
-        end_index = (i + 1) * n
-        clientlistskew = clientlist[start_index:end_index]
-        for client in clientlistskew:
-            unbalancing(client,skewlist[i],ratiolist[i])
-            data_preparation(client)
-        clientlist[start_index:end_index] = clientlistskew
-    return my_server, clientlist
-
-def load_users_data(directory, number_of_users, seed = 42):
-    import os
-    import json
-    import random
-    import numpy as np
-    """
-    Loads n = number_of_users random JSON users_datas from the specified directory.
-
-    Parameters
-    ----------
-    directory : str
-        The directory path where JSON users_datas are located.
-    seed : int
-        A random seed to ensure reproducibility of random selection.
-    number_of_users : int
-        The number of JSON files to load randomly. Correspond to the number of users
-
-    Returns
-    -------
-    users_data : list
-        A list containing the JSON data loaded from the randomly selected files.
-    Each element of the list is a user with its own sample. 
-    It is a dictionnary of the form : 
-    #{'users':[], 'num_samples':{['user_data : val]: }, 'user_data':[json_data['users'][0] : {'x': features, 'y': labels}]} 
-    """
     
-    # Set the random seed
-    random.seed(seed)
-    
-    # Get a list of JSON files in the directory
-    json_files = [filename for filename in os.listdir(directory) if filename.endswith('.json')]
-    
-    # Sample n files without replacement
-    selected_files = random.sample(json_files, min(number_of_users, len(json_files)))
-    
-    # Load the selected JSON files into a list
-    users_data = []
-    for filename in selected_files:
-        filepath = os.path.join(directory, filename)
-        with open(filepath, 'r') as file:
-            json_data = json.load(file)
-            users_data.append(json_data)
-    
-    return users_data
+    return client
 
 def dilate_images(x_train, kernel_size=(3, 3)):
     import cv2
@@ -326,30 +469,25 @@ def erode_images(x_train, kernel_size=(3, 3)):
 
 
 
-def setup_experiment_features_skew(model,number_of_clients,number_of_samples_by_clients, seed =42) :
-    # Setup server and clients for features distribution skew experiments
+def save_results(model_server, row_exp):
     
-    clientdata = data_distribution(number_of_clients, number_of_samples_by_clients,seed)
-    clientlist = []
-    for id in range(number_of_clients):
-        clientlist.append(Client(id,clientdata[id]))
-    my_server = Server(model)
-    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
-    n = number_of_clients//3
-    for i in range(3):
-        start_index = i * n
-        end_index = (i + 1) * n
+    import torch
 
-        clientlistrotated = clientlist[start_index:end_index]
-        for client in clientlistrotated:
-            if client.id % 3 == 1:
-                client.data['x'] = erode_images(client.data['x'])
-                client.heterogeneity = 'erosion'
-            elif client.id % 3 == 2 :
-                client.data['x'] = dilate_images(client.data['x'])
-                client.heterogeneity = 'dilatation'
-            else :
-                client.heterogeneity = 'none'   
-            data_preparation(client)
-        clientlist[start_index:end_index] = clientlistrotated
-    return my_server, clientlist
+    if row_exp['exp_type'] == "client" or "server":
+        for cluster_id in range(row_exp['num_clusters']): 
+            torch.save(model_server.clusters_models[cluster_id].state_dict(), f"./results/{row_exp['output']}_{row_exp['exp_type']}_model_cluster_{cluster_id}.pth")
+
+    return 
+
+
+def get_uid(str_obj):
+    """
+    Generates an (almost) unique Identifier given a string object.
+    Note: Collision probability is low enough to be functional for the use case desired which is to uniquely identify experiment parameters using an int
+    """
+
+    import hashlib
+    hash = hashlib.sha1(str_obj.encode("UTF-8")).hexdigest()
+    return hash
+
+    
