@@ -147,8 +147,8 @@ def plot_weights_heatmap(model, v_value=0.1):
     plt.tight_layout()
     plt.show()
     
-import torch
-from sklearn.metrics.pairwise import cosine_similarity
+
+
 
 def flatten_weights(model):
     # Flatten the model's weights and create a weight's vector (used for cosine similarity calculation)
@@ -158,10 +158,15 @@ def flatten_weights(model):
     return flattened_weights
 
 def calculate_cosine_similarity(model1, model2):
-    # Example usage:
-    # Assuming you have two models named 'model1' and 'model2'
-    # similarity = calculate_cosine_similarity(model1, model2)
+
+    from sklearn.metrics.pairwise import cosine_similarity
     
+    """
+    Example usage:
+    Assuming you have two models named 'model1' and 'model2'
+    similarity = calculate_cosine_similarity(model1, model2)
+    """
+
     # Flatten the weights of both models
     weights1 = flatten_weights(model1)
     weights2 = flatten_weights(model2)
