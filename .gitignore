@@ -7,3 +7,4 @@ info.log
 *.ipynb
 launch.json
 backup_results/*
+*.sh

@@ -60,14 +60,8 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
     if init_cluster == True : 
         
         init_server_cluster(model_server, list_clients, row_exp, p_expert_opinion=0.8)
-
     
-    #print({c:{h:n
-    #        for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
-    #          for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
-    #            for c in range(row_exp['num_clusters'])}, lvl = "info")    
-    
-    for round in range(row_exp['federated_rounds']):
+    for _ in range(row_exp['federated_rounds']):
 
         for client in list_clients:
 
@@ -76,13 +70,6 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
         fedavg(model_server, list_clients)
         
         set_client_cluster(model_server, list_clients, row_exp)
-
-        #print([c.cluster_id for c in list_clients])
-        #print(f"Round {round} clusters distributions")
-        #print({c:{h:n
-        #    for h in list(set([fc.heterogeneity_class for fc in list_clients])) 
-        #      for n in [len([x for x in [fc for fc in list_clients if fc.cluster_id == c and fc.heterogeneity_class == h]])]}
-        #        for c in range(row_exp['num_clusters'])})
 
     cprint("Finished client-side CFL")
 
@@ -291,42 +278,37 @@ def test_model(model, test_loader, row_exp):
     total = 0
     test_loss = 0.0
 
-
     torch.manual_seed(row_exp['seed'])
-    # Disable gradient calculation for evaluation
+
     with torch.no_grad():
-        # Iterate over the test dataset
+
         for inputs, labels in test_loader:
 
-            # Forward pass
             outputs = model(inputs)
 
-            # Calculate the loss
             loss = criterion(outputs, labels)
+
             test_loss += loss.item() * inputs.size(0)
 
-            # Get the predicted class
             _, predicted = torch.max(outputs, 1)
 
-            # Update total and correct predictions
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    # Calculate average test loss
     test_loss = test_loss / len(test_loader.dataset)
 
-    # Calculate accuracy on the test set
-    accuracy = correct / total
+    accuracy = (correct / total) * 100
 
-    # Print the test loss and accuracy
-    return accuracy
+    formated_accuracy = "{:.2f}".format(accuracy)
+
+    return formated_accuracy
 
 
 def add_clients_accuracies(model_server, list_clients, row_exp):
     
 
     for client in list_clients : 
-        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'], row_exp)*100
+        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'], row_exp)
         setattr(client, 'accuracy', acc)
 
     return list_clients
