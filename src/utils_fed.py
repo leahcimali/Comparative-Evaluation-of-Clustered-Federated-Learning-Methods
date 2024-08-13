@@ -1,29 +1,36 @@
 
-#from src.utils_data import my_data_loader, createLoaders
-
-
-import torch
-import copy
-import copy
-
-# STANDARD FL 
-
 def send_server_model_to_client(client_list, my_server):
-    # As title 
-    if my_server.num_clusters == None: 
-        for client in client_list:
-            setattr(client, 'model', copy.deepcopy(my_server.model))
-            
-    else:
-        for client in client_list:
+    """
+    Function to copy server model to clients in standard FL
+    """
+
+    import copy
+
+    for client in client_list:
+        setattr(client, 'model', copy.deepcopy(my_server.model))
+
+    return
+
+
+def send_cluster_models_to_clients(client_list , my_server):
+    """
+    Function to distribute cluster models to clients based on attribute client.cluster_id
+    """
+    import copy
+
+    for client in client_list:
             if client.cluster_id is None:
                 setattr(client, 'model', copy.deepcopy(my_server.model))
             else:
                 setattr(client, 'model', copy.deepcopy(my_server.clusters_models[client.cluster_id]))
+    return 
 
-import copy
 
 def model_avg(client_list):
+
+    import copy
+    import torch
+
     # Create a new model with the weight average of clients' weights
     new_model = copy.deepcopy(client_list[0].model)
         
@@ -48,6 +55,7 @@ def model_avg(client_list):
         param.data = weighted_avg_param
         
         return new_model
+    
     
 def fedavg(my_server,client_list):
     """
@@ -115,7 +123,6 @@ def model_weight_matrix(list_clients):
 
 
 def k_means_cluster_id(weight_matrix, k): 
-    import pandas as pd
     from sklearn.cluster import KMeans
     
     """
@@ -165,6 +172,9 @@ def init_server_cluster(my_server, client_list, row_exp, p_expert_opinion=None):
     
     from src.models import SimpleLinear
     import numpy as np
+    import copy
+    import torch
+
     torch.manual_seed(row_exp['seed'])
 
     list_heterogeneities = list(set([c.heterogeneity_class for c in client_list]))
@@ -198,6 +208,7 @@ def set_client_cluster(my_server, client_list, row_exp):
     
     from src.utils_training import loss_calculation
     import numpy as np
+    import copy
     
     for client in client_list:
         

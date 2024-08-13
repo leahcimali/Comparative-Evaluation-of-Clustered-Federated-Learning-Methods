@@ -25,7 +25,7 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     torch.manual_seed(row_exp['seed'])
 
-    model_server = train_federated(model_server, list_clients, row_exp)
+    model_server = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
     
     model_server.clusters_models= {cluster_id: copy.deepcopy(model_server.model) for cluster_id in range(row_exp['num_clusters'])}
     
@@ -37,7 +37,7 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     cprint("Finished clustering")
     
-    model_server = train_federated(model_server, list_clients, row_exp)
+    model_server = train_federated(model_server, list_clients, row_exp, use_cluster_models = True)
 
     cprint('Finished server-side CFL')
 
@@ -151,7 +151,7 @@ def test_benchmark(model_trained, list_clients, test_loader, row_exp):
 def train_model(model_server, train_loader, list_clients, row_exp):
     
     if not train_loader:
-        trained_obj = train_federated(model_server, list_clients, row_exp)
+        trained_obj = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
         trained_model = trained_obj.model
     
     else:
@@ -161,7 +161,7 @@ def train_model(model_server, train_loader, list_clients, row_exp):
 
 
 
-def train_federated(main_model, list_clients, row_exp):
+def train_federated(main_model, list_clients, row_exp, use_cluster_models = False):
     """
     Controler function to launch federated learning
 
@@ -170,15 +170,22 @@ def train_federated(main_model, list_clients, row_exp):
     main_model:
         Define the central node model :
     """
-    import numpy as np
-    from src.utils_fed import send_server_model_to_client, fedavg
+
+    from src.utils_fed import send_server_model_to_client, send_cluster_models_to_clients, fedavg
     
     
     for i in range(0, row_exp['federated_rounds']):
 
         accs = []
 
-        send_server_model_to_client(list_clients, main_model)
+        
+        if use_cluster_models == False:
+        
+            send_server_model_to_client(list_clients, main_model)
+
+        else:
+
+            send_cluster_models_to_clients(list_clients, main_model)
 
         for client in list_clients:
 
