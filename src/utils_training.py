@@ -59,7 +59,7 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 
     if init_cluster == True : 
         
-        init_server_cluster(model_server, list_clients, row_exp, p_expert_opinion=0.8)
+        init_server_cluster(model_server, list_clients, row_exp, p_expert_opinion=0.0)
     
     for _ in range(row_exp['federated_rounds']):
 

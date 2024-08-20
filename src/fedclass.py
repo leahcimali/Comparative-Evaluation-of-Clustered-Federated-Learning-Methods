@@ -8,8 +8,8 @@ class Client:
         self.id = client_id
         self.data = data 
         self.model = None  
-        self.cluster_id = np.nan 
-        self.heterogeneity_class = np.nan
+        self.cluster_id = None
+        self.heterogeneity_class = None
         self.accuracy = 0
 
     def to_dict(self):

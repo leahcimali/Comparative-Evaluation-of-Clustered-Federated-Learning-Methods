@@ -54,7 +54,7 @@ def model_avg(client_list):
         # Assign the weighted averaged parameter to the new model
         param.data = weighted_avg_param
         
-        return new_model
+    return new_model
     
     
 def fedavg(my_server,client_list):
