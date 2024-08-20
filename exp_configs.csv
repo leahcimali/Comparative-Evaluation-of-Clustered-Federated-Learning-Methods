@@ -1,5 +1,4 @@
 exp_type,dataset,heterogeneity_type,num_clients,num_samples_by_label,num_clusters,centralized_epochs,federated_rounds,seed
-client,mnist,concept-shift-on-labels,48,100,6,10,20,42
 server,kmnist,concept-shift-on-labels,48,100,6,10,20,42
 server,fashion-mnist,concept-shift-on-labels,48,100,6,10,20,42
 server,mnist,concept-shift-on-features,48,100,4,10,20,42
@@ -29,3 +28,18 @@ client,fashion-mnist,features-distribution-skew,48,100,3,10,20,42
 client,mnist,quantity-skew,48,100,4,10,20,42
 client,kmnist,quantity-skew,48,100,4,10,20,42
 client,fashion-mnist,quantity-skew,48,100,4,10,20,42
+benchmark,mnist,concept-shift-on-labels,48,100,6,10,20,42
+benchmark,kmnist,concept-shift-on-labels,48,100,6,10,20,42
+benchmark,fashion-mnist,concept-shift-on-labels,48,100,6,10,20,42
+benchmark,mnist,concept-shift-on-features,48,100,4,10,20,42
+benchmark,kmnist,concept-shift-on-features,48,100,4,10,20,42
+benchmark,fashion-mnist,concept-shift-on-features,48,100,4,10,20,42
+benchmark,mnist,labels-distribution-skew,48,100,4,10,20,42
+benchmark,kmnist,labels-distribution-skew,48,100,4,10,20,42
+benchmark,fashion-mnist,labels-distribution-skew,48,100,4,10,20,42
+benchmark,mnist,features-distribution-skew,48,100,3,10,20,42
+benchmark,kmnist,features-distribution-skew,48,100,3,10,20,42
+benchmark,fashion-mnist,features-distribution-skew,48,100,3,10,20,42
+benchmark,mnist,quantity-skew,48,100,4,10,20,42
+benchmark,kmnist,quantity-skew,48,100,4,10,20,42
+benchmark,fashion-mnist,quantity-skew,48,100,4,10,20,42
