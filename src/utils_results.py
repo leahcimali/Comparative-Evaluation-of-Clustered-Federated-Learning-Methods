@@ -140,7 +140,6 @@ def summarize_results():
 
     from pathlib import Path
     import pandas as pd
-    import numpy as np
     from numpy import mean, std
 
     from metrics import calc_global_metrics

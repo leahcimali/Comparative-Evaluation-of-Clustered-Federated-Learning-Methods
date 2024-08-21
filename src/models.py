@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
+
 
 class SimpleLinear(nn.Module):
     # Simple fully connected neural network with ReLU activations with a single hidden layer of size 200
