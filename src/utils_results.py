@@ -3,10 +3,12 @@ from pandas import DataFrame
 from pathlib import Path
    
 
-def save_histograms():
+def save_histograms() -> None:
 
-    """
-    Read result files and save all histogram plots
+    """Read csv files found in 'results/' and generates and saves histogram plots of clients assignemnts
+
+    Raises : 
+        Warning when the csv file is not of the expected format (code generated results csv)
     """
 
     import pandas as pd
@@ -28,13 +30,15 @@ def save_histograms():
                 print(f"Error: Unable to open result file {file_path}.",e)
             
                 continue
-
     return
 
 
 
-def get_clusters(df_results):
+def get_clusters(df_results : DataFrame) -> list:
     
+    """ Function to returns a list of clusters ranging from 0 to max_cluster (uses: append_empty_clusters())
+    """
+
     list_clusters = list(df_results['cluster_id'].unique())
 
     list_clusters = append_empty_clusters(list_clusters)
@@ -42,9 +46,15 @@ def get_clusters(df_results):
     return list_clusters
 
 
-def append_empty_clusters(list_clusters):
+def append_empty_clusters(list_clusters : list) -> list:
     """
-    Handle the situation where some clusters are empty by appending the clusters ID
+    Utility function for ``get_clusters'' to handle the situation where some clusters are empty by appending the clusters ID
+    
+    Args:
+        list_clusters: List of clusters with clients
+
+    Returns:
+        List of clusters with or without clients
     """
 
     list_clusters_int = [int(x) for x in list_clusters]
@@ -74,7 +84,16 @@ def get_z_nclients(df_results, x_het, y_clust, labels_heterogeneity):
 
 
 
-def plot_histogram_clusters(df_results: DataFrame, title):
+def plot_histogram_clusters(df_results: DataFrame, title : str) -> None:
+    
+    """ Function to create 3D Histograms of clients to cluster assignments showing client's heterogeneity class 
+
+    Args:
+        
+        df_results : DataFrame containing all parameters from the resulting csv files
+        
+        title : The plot title. The image is saved in results/plots/histogram_' + title + '.png'
+    """
     
     import matplotlib.pyplot as plt
     import numpy as np 
@@ -122,10 +141,15 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     plt.title(title, fontdict=None, loc='center', pad=None)
     
     plt.savefig('results/plots/histogram_' + title + '.png')
+    
     plt.close()
 
+    return
 
-def normalize_results(results_accuracy, results_std):
+
+def normalize_results(results_accuracy : float, results_std : float) -> int:
+
+    """Utility function to convert float accuracy and std to percentage """
     
     if results_accuracy < 1:
         
@@ -136,8 +160,10 @@ def normalize_results(results_accuracy, results_std):
     return results_accuracy, results_std
 
 
-def summarize_results():
+def summarize_results() -> None:
 
+    """ Creates results summary of all the results files under "results/summarized_results.csv"""
+        
     from pathlib import Path
     import pandas as pd
     from numpy import mean, std

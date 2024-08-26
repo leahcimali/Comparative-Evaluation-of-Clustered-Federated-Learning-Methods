@@ -1,15 +1,34 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class SimpleLinear(nn.Module):
-    # Simple fully connected neural network with ReLU activations with a single hidden layer of size 200
+    """ Fully connected neural network with a single hidden layer of default size 200 and ReLU activations"""
+    
     def __init__(self, h1=200):
+        
+        """ Initialization function
+        Args:
+            h1: int
+                Desired size of the hidden layer 
+        """
+
         super().__init__()
         self.fc1 = nn.Linear(28*28, h1)
         self.fc2 = nn.Linear(h1, 10)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
+        
+        """ Forward pass function through the network
+        
+        Args:
+            x : torch.Tensor
+                input image of size 28 x 28
+
+        Returns: log_softmax probabilities of the output layer
+        """
+        
         x = x.view(-1, 28 * 28)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -17,7 +36,13 @@ class SimpleLinear(nn.Module):
 
 
 class SimpleConv(nn.Module):
+
+    """ Convolutional neural network with 3 convolutional layers and one fully connected layer
+    """
+
     def __init__(self):
+        """ Initialization function
+        """
         super(SimpleConv, self).__init__()
         # convolutional layer
         self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
@@ -32,11 +57,27 @@ class SimpleConv(nn.Module):
         # Dropout
         self.dropout = nn.Dropout(p=0.2)
 
-    def flatten(self, x):
+    def flatten(self, x : nn.torch.Tensor):
+    
+        """Function to flatten a layer
+        
+            Args: 
+                x : torch.Tensor
+
+            Returns:
+                flattened Tensor
+        """
+    
         return x.reshape(x.size()[0], -1)
     
-    def forward(self, x):
-        # add sequence of convolutional and max pooling layers
+    def forward(self, x : nn.torch.Tensor):
+        """ Forward pass through the network which returns the softmax probabilities of the output layer
+
+        Args:
+            x : torch.Tensor
+                input image to use for training
+        """
+        
         x = self.dropout(self.pool(F.relu(self.conv1(x))))
         x = self.dropout(self.pool(F.relu(self.conv2(x))))
         x = self.dropout(self.pool(F.relu(self.conv3(x))))

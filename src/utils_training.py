@@ -3,20 +3,29 @@ import torch.nn as nn
 import torch.optim as optim
 
 from src.models import SimpleLinear
+from src.fedclass import Server
+from typing import Tuple
+from torch.utils.data import DataLoader
 
 lr = 0.01
 
 
-def lr_schedule(epoch,lr):
-    decay_factor = 0.1
-    if epoch % 10 == 0 and epoch != 0:
-        return lr * decay_factor
-    else:
-        return lr
+def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str) -> None:
+    
+    """ Driver function for server-side cluster FL algorithm. The algorithm personalize training by clusters obtained
+    from model weights (k-means).
+    
+     Args:
+        
+        model_server : The nn.Module to save
 
+        list_clients : A list of Client Objects used as nodes in the FL protocol
+            
+        row_exp : The current experiment's global parameters
 
-def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
+        output_name : the name of the results csv files saved in results/
 
+    """
     from src.utils_fed import k_means_clustering
     from src.metrics import report_CFL
     from src.utils_logging import cprint
@@ -33,7 +42,7 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     cprint(f"Preparing to cluster with {len(list_clients)} clients")
 
-    k_means_clustering(list_clients, row_exp['num_clusters'])
+    k_means_clustering(list_clients, row_exp['num_clusters'], row_exp['seed'])
 
     cprint("Finished clustering")
     
@@ -43,12 +52,30 @@ def run_cfl_server_side(model_server, list_clients, row_exp, output_name):
 
     list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
 
-    results = report_CFL(list_clients, output_name)
+    report_CFL(list_clients, output_name)
 
-    return results
+    return 
 
+
+
+def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str, init_cluster=True) -> None:
+
+    """ Driver function for client-side cluster FL algorithm. The algorithm personalize training by clusters obtained
+    from model weights (k-means).
     
-def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_cluster=True):
+     Args:
+        
+        model_server : The nn.Module to save
+
+        list_clients : A list of Client Objects used as nodes in the FL protocol
+
+        row_exp : The current experiment's global parameters
+
+        output_name : the name of the results csv files saved in results/
+
+        init_clusters : boolean indicating whether cluster assignement is done before initial training
+
+    """
 
     from src.utils_fed import init_server_cluster, set_client_cluster, fedavg
     from src.metrics import report_CFL
@@ -75,12 +102,27 @@ def run_cfl_client_side(model_server, list_clients, row_exp, output_name, init_c
 
     list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
 
-    results = report_CFL(list_clients, output_name)
-    return results
+    report_CFL(list_clients, output_name)
+    
+    return
     
 
-def run_benchmark(list_clients, row_exp, output_name, main_model=SimpleLinear()):
-    
+def run_benchmark(list_clients : list, row_exp : dict, output_name : str, main_model : nn.Module =SimpleLinear()) -> None:
+
+    """ Benchmark function to calculate baseline FL results and ``optimal'' personalization results if clusters are known in advance
+
+    Args:
+        
+        list_clients : A list of Client Objects used as nodes in the FL protocol  
+
+        row_exp : The current experiment's global parameters
+
+        output_name : the name of the results csv files saved in results/
+
+        main_model : Type of Server model needed (default to SimpleLinear())
+
+    """
+
     import pandas as pd 
     
     list_exps = ['global-federated', 'pers-centralized'] 
@@ -113,26 +155,57 @@ def run_benchmark(list_clients, row_exp, output_name, main_model=SimpleLinear())
 
     return
 
-def train_benchmark(list_clients, row_exp, main_model, training_type="centralized"):
-        
-        from src.utils_training import train_model
-        from src.utils_data import centralize_data
-        import copy
 
-        train_loader, test_loader = centralize_data(list_clients)
+def train_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module, training_type : str ="centralized") -> Tuple[nn.Module, DataLoader]:
+    """
+    Utility function for benchmark experiments. If <training_type> involves "federated", we copy <main_model>, otherwise we directly use <main_model>
+
+    Args:
+                
+        list_clients : A list of Client Objects used as nodes in the FL protocol  
+
+        row_exp : The current experiment's global parameters
+
+        main_model : Type of Server model needed (default to SimpleLinear())
+
+        training_type : a value frmo ['global-federated', 'pers-centralized'] 
+
+    """   
+    from src.utils_training import train_model
+    from src.utils_data import centralize_data
+    import copy
+
+    train_loader, test_loader = centralize_data(list_clients)
+
+    if "federated" in training_type:
+
+        model_server = copy.deepcopy(main_model)
+
+        model_trained = train_model(model_server, None, list_clients, row_exp)
     
-        if "federated" in training_type:
-            model_server = copy.deepcopy(main_model)
-            model_trained = train_model(model_server, None, list_clients, row_exp)
-        
-        else:
-            model_trained = train_model(main_model, train_loader, list_clients, row_exp) 
-        
-        return model_trained, test_loader
+    else:
+
+        model_trained = train_model(main_model, train_loader, list_clients, row_exp) 
+    
+    return model_trained, test_loader
 
 
 
-def test_benchmark(model_trained, list_clients, test_loader, row_exp):    
+def test_benchmark(model_trained : nn.Module, list_clients : list, test_loader : DataLoader, row_exp : dict):
+
+    """ Tests <model_trained> on test_loader (global) dataset and sets the attribute accuracy on each Client 
+
+        Args:
+                
+            list_clients : A list of Client Objects used as nodes in the FL protocol  
+
+            row_exp : The current experiment's global parameters
+
+            main_model : Type of Server model needed
+
+            training_type : a value frmo ['global-federated', 'pers-centralized'] 
+
+    """       
          
     from src.utils_training import test_model
     
@@ -148,7 +221,11 @@ def test_benchmark(model_trained, list_clients, test_loader, row_exp):
 
 
 
-def train_model(model_server, train_loader, list_clients, row_exp):
+def train_model(model_server : Server, train_loader : DataLoader, list_clients : list, row_exp : dict):
+
+    """ Utility function to launch federated or centralized training on the <model_server> 
+    
+    """
     
     if not train_loader:
         trained_obj = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
@@ -162,13 +239,18 @@ def train_model(model_server, train_loader, list_clients, row_exp):
 
 
 def train_federated(main_model, list_clients, row_exp, use_cluster_models = False):
-    """
-    Controler function to launch federated learning
+    
+    """Controler function to launch federated learning
 
-    Parameters
-    ----------
-    main_model:
-        Define the central node model :
+    Args:
+        
+        main_model : Server model used in our experiment
+        
+        list_clients : A list of Client Objects used as nodes in the FL protocol  
+
+        row_exp : The current experiment's global parameters
+
+        use_cluster_models : Boolean to determine whether to use personalization by clustering
     """
 
     from src.utils_fed import send_server_model_to_client, send_cluster_models_to_clients, fedavg
@@ -178,7 +260,6 @@ def train_federated(main_model, list_clients, row_exp, use_cluster_models = Fals
 
         accs = []
 
-        
         if use_cluster_models == False:
         
             send_server_model_to_client(list_clients, main_model)
@@ -198,89 +279,118 @@ def train_federated(main_model, list_clients, row_exp, use_cluster_models = Fals
     return main_model
 
 
-def train_central(main_model, train_loader, row_exp, lr_scheduler=None):
+def train_central(main_model, train_loader, row_exp):
+
+    """ Main training function for centralized learning
+    
+    Args:
+
+        main_model : Server model used in our experiment
+        
+        train_loader : DataLoader with the dataset to use for training
+
+        row_exp : The current experiment's global parameters
+
+    """
 
     criterion = nn.CrossEntropyLoss()
+   
     optimizer=optim.SGD
     optimizer = optimizer(main_model.parameters(), lr=0.01) 
+   
     torch.manual_seed(row_exp['seed'])
 
     main_model.train()
+    
     for epoch in range(row_exp['centralized_epochs']):
           
         running_loss = total = correct = 0
 
-        # Apply learning rate decay if lr_scheduler is provided
-        if lr_scheduler is not None:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = lr_scheduler(epoch, param_group['lr'])
-
-        # Iterate over the training dataset
         for inputs, labels in train_loader:
 
-            optimizer.zero_grad()  # Zero the gradients
-            outputs = main_model(inputs)  # Forward pass
+            optimizer.zero_grad()  
+
+            outputs = main_model(inputs)  
+
             _, predicted = torch.max(outputs, 1)
 
-            loss = criterion(outputs, labels)  # Calculate the loss
-            loss.backward()  # Backward pass
-            optimizer.step()  # Update weights
-            
+            loss = criterion(outputs, labels)
+
+            loss.backward() 
+
+            optimizer.step()
+
             running_loss += loss.item() * inputs.size(0)
             
             total += labels.size(0)
+            
             correct += (predicted == labels).sum().item()
 
-    # Calculate accuracy on the test set
     accuracy = correct / total
 
-    main_model.eval()  # Set the model to evaluation mode        
+    main_model.eval() 
 
     return main_model, accuracy
 
-def loss_calculation(model, train_loader, row_exp): 
+
+
+def loss_calculation(model : nn.modules, train_loader : DataLoader, row_exp : dict) -> float:
+
+    """ Utility function to calculate average_loss across all samples <train_loader>
+
+    Args:
+
+        model : the input server model
+        
+        train_loader : DataLoader with the dataset to use for loss calculation
+
+        row_exp : The current experiment's global parameters
+    """ 
     import torch
     import torch.nn as nn
 
-    # Assuming you have a PyTorch model named 'model' and its training data loader named 'train_loader'
+    criterion = nn.CrossEntropyLoss()  
 
-    # Define your loss function
-    criterion = nn.CrossEntropyLoss()  # Example, adjust based on your task
-
-    # Set the model to evaluation mode
     model.eval()
 
-    # Initialize variables to accumulate loss and total number of samples
     total_loss = 0.0
     total_samples = 0
 
     torch.manual_seed(row_exp['seed'])
-    # Iterate through the training data loader
+
     with torch.no_grad():
+
         for inputs, targets in train_loader:
 
-            # Forward pass
             outputs = model(inputs)
 
-            # Compute the loss
             loss = criterion(outputs, targets)
 
-            # Accumulate the loss and the total number of samples
             total_loss += loss.item() * inputs.size(0)
             total_samples += inputs.size(0)
 
-    # Calculate the average loss
     average_loss = total_loss / total_samples
 
     return average_loss
 
-def test_model(model, test_loader, row_exp):
+
+def test_model(model : nn.Module, test_loader : DataLoader, row_exp : dict) -> float:
+
+    """ Calcualtes model accuracy (percentage) on the <test_loader> Dataset
+    
+    Args:
+
+        model : the input server model
+        
+        test_loader : DataLoader with the dataset to use for testing
+
+        row_exp : The current experiment's global parameters
+    """
+    
     criterion = nn.CrossEntropyLoss()
 
-    # Set the model to evaluation mode
     model.eval()
 
-    # Initialize variables to track accuracy
     correct = 0
     total = 0
     test_loss = 0.0
@@ -311,11 +421,23 @@ def test_model(model, test_loader, row_exp):
     return formated_accuracy
 
 
-def add_clients_accuracies(model_server, list_clients, row_exp):
-    
+def add_clients_accuracies(model_server : nn.Module, list_clients : list, row_exp : dict) -> list:
 
-    for client in list_clients : 
+    """
+    Evaluates the cluster's models saved in <model_server> on the relevant list of clients and sets the attribute accuracy.
+
+    Args:
+        model_server : Server object which contains the cluster models
+
+        list_clients : list of Client objects which belong to the different clusters
+
+        row_exp : The current experiment's global parameters
+    """
+
+    for client in list_clients :
+
         acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'], row_exp)
+        
         setattr(client, 'accuracy', acc)
 
     return list_clients
