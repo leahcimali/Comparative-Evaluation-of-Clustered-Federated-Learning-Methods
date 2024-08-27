@@ -34,7 +34,15 @@ class Client:
         self.heterogeneity_class = None
         self.accuracy = 0
 
-
+    def __eq__(self, value: object) -> bool:
+        return (self.id == value.id and
+                self.model == value.model and
+                all((self.data['x'] == value.data['x']).flatten()) and
+                all((self.data['y'] == value.data['y']).flatten()) and
+                self.cluster_id == value.cluster_id and
+                self.heterogeneity_class == value.heterogeneity_class) 
+    
+    
     def to_dict(self):
 
         """Return a dictionary with the attributes of the Client """ 
@@ -45,6 +53,8 @@ class Client:
             'heterogeneity_class': self.heterogeneity_class,
             'accuracy': self.accuracy
         }
+    
+    
 
 class Server:
 
@@ -70,4 +80,9 @@ class Server:
 
         self.model = model
         self.num_clusters = num_clusters  
-        self.clusters_models = {} 
+        self.clusters_models = {}
+
+    def __eq__(self, value: object) -> bool:
+        return (str(self.model.state_dict()) == str(value.model.state_dict()) and
+                self.num_clusters == value.num_clusters and
+                self.clusters_models == value.clusters_models)

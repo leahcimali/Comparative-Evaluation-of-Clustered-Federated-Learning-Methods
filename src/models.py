@@ -13,7 +13,6 @@ class SimpleLinear(nn.Module):
             h1: int
                 Desired size of the hidden layer 
         """
-
         super().__init__()
         self.fc1 = nn.Linear(28*28, h1)
         self.fc2 = nn.Linear(h1, 10)
@@ -33,7 +32,7 @@ class SimpleLinear(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
-
+    
 
 class SimpleConv(nn.Module):
 
@@ -57,7 +56,7 @@ class SimpleConv(nn.Module):
         # Dropout
         self.dropout = nn.Dropout(p=0.2)
 
-    def flatten(self, x : nn.torch.Tensor):
+    def flatten(self, x : torch.Tensor):
     
         """Function to flatten a layer
         
@@ -70,7 +69,7 @@ class SimpleConv(nn.Module):
     
         return x.reshape(x.size()[0], -1)
     
-    def forward(self, x : nn.torch.Tensor):
+    def forward(self, x : torch.Tensor):
         """ Forward pass through the network which returns the softmax probabilities of the output layer
 
         Args:

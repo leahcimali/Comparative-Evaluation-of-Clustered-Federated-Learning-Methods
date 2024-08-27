@@ -8,3 +8,6 @@ info.log
 launch.json
 backup_results/*
 *.sh
+tests/__pycache__/*
+MNIST/*
+pub/*

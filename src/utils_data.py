@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from numpy import ndarray
 from typing import Tuple
 
-def shuffle_list(list_samples : int, seed : int =42) -> list: 
+def shuffle_list(list_samples : int, seed : int) -> list: 
     
     """Function to shuffle the samples list
 
@@ -29,7 +29,7 @@ def shuffle_list(list_samples : int, seed : int =42) -> list:
 
 
 
-def create_label_dict(dataset : dict, seed : int = 42) -> dict:
+def create_label_dict(dataset : dict, seed : int) -> dict:
    
     """ Create a dictionary of dataset samples 
 
@@ -72,7 +72,7 @@ def create_label_dict(dataset : dict, seed : int = 42) -> dict:
 
 
 
-def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : dict, seed : int = 42) -> dict:
+def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : dict, seed : int) -> dict:
     
     """Distribute a dataset evenly accross num_clients clients. Works with datasets with 10 labels
     
@@ -105,6 +105,7 @@ def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : di
         client_dataset[client] = {}    
     
         client_dataset[client]['x'] = np.concatenate([clients_dictionary[client][label] for label in range(10)], axis=0)
+    
         client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
     
     return client_dataset
@@ -173,7 +174,7 @@ def data_preparation(client : Client, row_exp : dict) -> None:
 
 
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32)
     
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
     test_loader = DataLoader(test_dataset, batch_size=32)    
@@ -218,14 +219,21 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
     Args:
         row_exp : The current experiment's global parameters
+    
     Returns:
-        model_server: A nn model used the server in the FL protocol
+        
+        model_server : A nn model used the server in the FL protocol
+
         list_clients : A list of Client Objects used as nodes in the FL protocol
     """
 
     from src.models import SimpleLinear
+    import torch
     
     list_clients = []
+    
+    torch.manual_seed(row_exp['seed'])
+
     model_server = Server(SimpleLinear())
 
     dict_clients = get_clients_data(row_exp['num_clients'],
@@ -234,6 +242,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
                                     row_exp['seed'])    
     
     for i in range(row_exp['num_clients']):
+
         list_clients.append(Client(i, dict_clients[i]))
 
     list_clients = add_clients_heterogeneity(list_clients, row_exp)
@@ -278,7 +287,7 @@ def apply_label_swap(list_clients : list, row_exp : dict, list_swaps : list) -> 
     
     """ Utility function to apply label swaps on Client images
 
-    Args :
+    Args:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
         list_swap : List containing the labels to swap by heterogeneity class
@@ -316,11 +325,11 @@ def apply_rotation(list_clients : list, row_exp : dict) -> list:
 
     """ Utility function to apply rotation 0,90,180 and 270 to 1/4 of Clients 
 
-    Args :
+    Args:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
     
-    Returns :
+    Returns:
         Updated list of clients
     """
     
@@ -355,11 +364,11 @@ def apply_labels_skew(list_clients : list, row_exp : dict, list_skews : list, li
     
     """ Utility function to apply label skew to Clients' data 
 
-    Args :
+    Args:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
     
-    Returns :
+    Returns:
         Updated list of clients
     """
 
@@ -395,12 +404,12 @@ def apply_quantity_skew(list_clients : list, row_exp : dict, list_skews : list) 
      For each element in list_skews, apply the skew to an equal subset of Clients 
 
 
-    Args :
+    Args:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
         list_skew : List of float 0 < i < 1  with quantity skews to subsample data
     
-    Returns :
+    Returns:
         Updated list of clients
     """
     
@@ -437,11 +446,11 @@ def apply_features_skew(list_clients : list, row_exp : dict) -> list :
     
     """ Utility function to apply features skew to Clients' data 
 
-    Args :
+    Args:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
     
-    Returns :
+    Returns:
         Updated list of clients
     """
     

@@ -24,23 +24,3 @@ def calc_global_metrics(labels_true: list, labels_pred: list) -> dict:
     dict_metrics = {"ARI": ARI_score, "AMI": AMI_score, "hom": homogeneity_score, "cmplt": completness_score, "vm": v_measure}
     
     return dict_metrics
-
-
-
-def report_CFL(list_clients: list, output_name: str) -> None:
-    """ Save dataframe of results in results/<output_name>.csv
-
-    Args:
-        list_clients: list
-            the list of Client objects to save to file
-        output_name : str
-            the desired name of the output file
-    """
-
-    import pandas as pd
-
-    df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
-    
-    df_results.to_csv("results/" + output_name + ".csv")
-
-    return

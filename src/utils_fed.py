@@ -1,4 +1,4 @@
-from fedclass import Server
+from src.fedclass import Server
 import torch.nn as nn
 import pandas as pd
 

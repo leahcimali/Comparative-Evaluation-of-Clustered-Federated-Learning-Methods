@@ -1,16 +1,18 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader
+
+from typing import Tuple
+import pandas as pd
 
 from src.models import SimpleLinear
 from src.fedclass import Server
-from typing import Tuple
-from torch.utils.data import DataLoader
 
 lr = 0.01
 
 
-def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str) -> None:
+def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str) -> pd.DataFrame:
     
     """ Driver function for server-side cluster FL algorithm. The algorithm personalize training by clusters obtained
     from model weights (k-means).
@@ -27,8 +29,6 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
 
     """
     from src.utils_fed import k_means_clustering
-    from src.metrics import report_CFL
-    from src.utils_logging import cprint
     import copy
     import torch 
 
@@ -40,25 +40,19 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
     
     setattr(model_server, 'num_clusters', row_exp['num_clusters'])
 
-    cprint(f"Preparing to cluster with {len(list_clients)} clients")
-
     k_means_clustering(list_clients, row_exp['num_clusters'], row_exp['seed'])
-
-    cprint("Finished clustering")
     
     model_server = train_federated(model_server, list_clients, row_exp, use_cluster_models = True)
 
-    cprint('Finished server-side CFL')
-
     list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
 
-    report_CFL(list_clients, output_name)
+    df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
+    
+    return df_results 
 
-    return 
 
 
-
-def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str, init_cluster=True) -> None:
+def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str, init_cluster=True) -> pd.DataFrame:
 
     """ Driver function for client-side cluster FL algorithm. The algorithm personalize training by clusters obtained
     from model weights (k-means).
@@ -78,8 +72,6 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
     """
 
     from src.utils_fed import init_server_cluster, set_client_cluster, fedavg
-    from src.metrics import report_CFL
-    from src.utils_logging import cprint
     import torch
 
     torch.manual_seed(row_exp['seed'])
@@ -98,16 +90,14 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
         
         set_client_cluster(model_server, list_clients, row_exp)
 
-    cprint("Finished client-side CFL")
-
     list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
 
-    report_CFL(list_clients, output_name)
+    df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
-    return
+    return df_results
     
 
-def run_benchmark(list_clients : list, row_exp : dict, output_name : str, main_model : nn.Module =SimpleLinear()) -> None:
+def run_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module) -> pd.DataFrame:
 
     """ Benchmark function to calculate baseline FL results and ``optimal'' personalization results if clusters are known in advance
 
@@ -117,17 +107,17 @@ def run_benchmark(list_clients : list, row_exp : dict, output_name : str, main_m
 
         row_exp : The current experiment's global parameters
 
-        output_name : the name of the results csv files saved in results/
-
         main_model : Type of Server model needed (default to SimpleLinear())
 
     """
 
     import pandas as pd 
+    import torch
     
     list_exps = ['global-federated', 'pers-centralized'] 
     list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
-
+    
+    torch.manual_seed(row_exp['seed'])
   
     for training_type in list_exps: 
         
@@ -150,10 +140,8 @@ def run_benchmark(list_clients : list, row_exp : dict, output_name : str, main_m
             test_benchmark(model_server, list_clients, test_loader, row_exp)
 
         df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
-
-        df_results.to_csv(path_or_buf=  "results/" + output_name.replace("benchmark", "benchmark-" + training_type) + ".csv")
-
-    return
+    
+    return df_results
 
 
 def train_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module, training_type : str ="centralized") -> Tuple[nn.Module, DataLoader]:
@@ -228,7 +216,9 @@ def train_model(model_server : Server, train_loader : DataLoader, list_clients :
     """
     
     if not train_loader:
+
         trained_obj = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
+        
         trained_model = trained_obj.model
     
     else:
@@ -294,12 +284,12 @@ def train_central(main_model, train_loader, row_exp):
     """
 
     criterion = nn.CrossEntropyLoss()
-   
+    
+    torch.manual_seed(row_exp['seed'])
+
     optimizer=optim.SGD
     optimizer = optimizer(main_model.parameters(), lr=0.01) 
    
-    torch.manual_seed(row_exp['seed'])
-
     main_model.train()
     
     for epoch in range(row_exp['centralized_epochs']):
@@ -410,15 +400,14 @@ def test_model(model : nn.Module, test_loader : DataLoader, row_exp : dict) -> f
             _, predicted = torch.max(outputs, 1)
 
             total += labels.size(0)
+           
             correct += (predicted == labels).sum().item()
 
     test_loss = test_loss / len(test_loader.dataset)
 
     accuracy = (correct / total) * 100
 
-    formated_accuracy = "{:.2f}".format(accuracy)
-
-    return formated_accuracy
+    return accuracy
 
 
 def add_clients_accuracies(model_server : nn.Module, list_clients : list, row_exp : dict) -> list:
