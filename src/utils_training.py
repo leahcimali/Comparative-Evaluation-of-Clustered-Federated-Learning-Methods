@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from typing import Tuple
 import pandas as pd
 
 from src.models import SimpleLinear
@@ -97,7 +96,7 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
     return df_results
     
 
-def run_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module) -> pd.DataFrame:
+def run_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module, list_exps : list) -> pd.DataFrame:
 
     """ Benchmark function to calculate baseline FL results and ``optimal'' personalization results if clusters are known in advance
 
@@ -109,74 +108,52 @@ def run_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module) -
 
         main_model : Type of Server model needed (default to SimpleLinear())
 
+        list_exps : list containing the experiment names to run (current supported options: 'global-federated' and 'pers-centralized')
+
     """
 
     import pandas as pd 
     import torch
-    
-    list_exps = ['global-federated', 'pers-centralized'] 
-    list_heterogeneities = list(set(client.heterogeneity_class for client in list_clients))
+    import copy
+
+    from src.utils_data import centralize_data
+
+    list_heterogeneities = list(dict.fromkeys([client.heterogeneity_class for client in list_clients]))
     
     torch.manual_seed(row_exp['seed'])
-  
+    torch.use_deterministic_algorithms(True)
+
     for training_type in list_exps: 
         
-        curr_model = main_model if 'federated' in training_type else SimpleLinear()
+        curr_model = main_model if training_type == 'global-federated' else SimpleLinear()
 
-        if 'pers' in training_type:
+        match training_type:
+        
+            case 'pers-centralized':
 
-            for heterogeneity_class in list_heterogeneities:
-                
-                list_clients_filtered = [client for client in list_clients if client.heterogeneity_class == heterogeneity_class]
+                for heterogeneity_class in list_heterogeneities:
+                    
+                    list_clients_filtered = [client for client in list_clients if client.heterogeneity_class == heterogeneity_class]
 
-                model_server, test_loader = train_benchmark(list_clients_filtered, row_exp, curr_model, training_type)
+                    train_loader, test_loader = centralize_data(list_clients_filtered)
 
-                test_benchmark(model_server, list_clients_filtered, test_loader, row_exp)
-       
-        elif 'global' in training_type:
-                
-            model_server, test_loader = train_benchmark(list_clients, row_exp, curr_model, training_type)
+                    model_trained, _ = train_central(curr_model, train_loader, row_exp) 
 
-            test_benchmark(model_server, list_clients, test_loader, row_exp)
+                    test_benchmark(model_trained, list_clients_filtered, test_loader, row_exp)
+        
+            case 'global-federated':
+                    
+                model_server = copy.deepcopy(curr_model)
+
+                model_trained = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
+            
+                _, test_loader = centralize_data(list_clients)
+
+                test_benchmark(model_trained.model, list_clients, test_loader, row_exp)
 
         df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
     return df_results
-
-
-def train_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module, training_type : str ="centralized") -> Tuple[nn.Module, DataLoader]:
-    """
-    Utility function for benchmark experiments. If <training_type> involves "federated", we copy <main_model>, otherwise we directly use <main_model>
-
-    Args:
-                
-        list_clients : A list of Client Objects used as nodes in the FL protocol  
-
-        row_exp : The current experiment's global parameters
-
-        main_model : Type of Server model needed (default to SimpleLinear())
-
-        training_type : a value frmo ['global-federated', 'pers-centralized'] 
-
-    """   
-    from src.utils_training import train_model
-    from src.utils_data import centralize_data
-    import copy
-
-    train_loader, test_loader = centralize_data(list_clients)
-
-    if "federated" in training_type:
-
-        model_server = copy.deepcopy(main_model)
-
-        model_trained = train_model(model_server, None, list_clients, row_exp)
-    
-    else:
-
-        model_trained = train_model(main_model, train_loader, list_clients, row_exp) 
-    
-    return model_trained, test_loader
-
 
 
 def test_benchmark(model_trained : nn.Module, list_clients : list, test_loader : DataLoader, row_exp : dict):
@@ -206,26 +183,6 @@ def test_benchmark(model_trained : nn.Module, list_clients : list, test_loader :
         setattr(client, 'accuracy', global_acc)
     
     return global_acc
-
-
-
-def train_model(model_server : Server, train_loader : DataLoader, list_clients : list, row_exp : dict):
-
-    """ Utility function to launch federated or centralized training on the <model_server> 
-    
-    """
-    
-    if not train_loader:
-
-        trained_obj = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
-        
-        trained_model = trained_obj.model
-    
-    else:
-        trained_model, _ = train_central(model_server, train_loader, row_exp)
-    
-    return trained_model
-
 
 
 def train_federated(main_model, list_clients, row_exp, use_cluster_models = False):
@@ -282,11 +239,8 @@ def train_central(main_model, train_loader, row_exp):
         row_exp : The current experiment's global parameters
 
     """
-
     criterion = nn.CrossEntropyLoss()
     
-    torch.manual_seed(row_exp['seed'])
-
     optimizer=optim.SGD
     optimizer = optimizer(main_model.parameters(), lr=0.01) 
    
@@ -346,7 +300,7 @@ def loss_calculation(model : nn.modules, train_loader : DataLoader, row_exp : di
     total_loss = 0.0
     total_samples = 0
 
-    torch.manual_seed(row_exp['seed'])
+    #torch.manual_seed(row_exp['seed'])
 
     with torch.no_grad():
 
@@ -379,13 +333,14 @@ def test_model(model : nn.Module, test_loader : DataLoader, row_exp : dict) -> f
     
     criterion = nn.CrossEntropyLoss()
 
+    #torch.manual_seed(row_exp['seed'])
+    
     model.eval()
 
     correct = 0
     total = 0
     test_loss = 0.0
 
-    torch.manual_seed(row_exp['seed'])
 
     with torch.no_grad():
 

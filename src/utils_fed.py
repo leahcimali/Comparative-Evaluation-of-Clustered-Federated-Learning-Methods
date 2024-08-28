@@ -204,11 +204,10 @@ def init_server_cluster(my_server : Server, list_clients : list, row_exp : dict,
     from src.models import SimpleLinear
     import numpy as np
     import copy
-    import torch
 
-    torch.manual_seed(row_exp['seed'])
+    np.random.seed(row_exp['seed'])
 
-    list_heterogeneities = list(set([c.heterogeneity_class for c in list_clients]))
+    list_heterogeneities = list(dict.fromkeys([client.heterogeneity_class for client in list_clients]))
 
     if not p_expert_opinion or p_expert_opinion == 0:
 

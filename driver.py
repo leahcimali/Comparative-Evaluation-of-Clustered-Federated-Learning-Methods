@@ -66,7 +66,7 @@ def launch_experiment(model_server, list_clients, row_exp, output_name, save_res
             
             print(f"Launching benchmark experiment with parameters:\n{str_row_exp}", lvl="info")   
 
-            df_results = run_benchmark(list_clients, row_exp, output_name, main_model=model_server)
+            df_results = run_benchmark(list_clients, row_exp, output_name, main_model=model_server, list_exps = ['global-federated', 'pers-centralized'] )
             
         elif row_exp['exp_type'] == "client":
             

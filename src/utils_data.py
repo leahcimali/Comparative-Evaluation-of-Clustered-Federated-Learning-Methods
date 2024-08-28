@@ -540,7 +540,7 @@ def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=64)
     
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
     test_loader = DataLoader(test_dataset, batch_size=64)
