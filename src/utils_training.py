@@ -11,7 +11,7 @@ from src.fedclass import Server
 lr = 0.01
 
 
-def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str) -> pd.DataFrame:
+def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : dict) -> pd.DataFrame:
     
     """ Driver function for server-side cluster FL algorithm. The algorithm personalize training by clusters obtained
     from model weights (k-means).
@@ -23,8 +23,6 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
         list_clients : A list of Client Objects used as nodes in the FL protocol
             
         row_exp : The current experiment's global parameters
-
-        output_name : the name of the results csv files saved in results/
 
     """
     from src.utils_fed import k_means_clustering
@@ -51,7 +49,7 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
 
 
 
-def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict, output_name : str, init_cluster=True) -> pd.DataFrame:
+def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict, init_cluster=True) -> pd.DataFrame:
 
     """ Driver function for client-side cluster FL algorithm. The algorithm personalize training by clusters obtained
     from model weights (k-means).
@@ -63,8 +61,6 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
         list_clients : A list of Client Objects used as nodes in the FL protocol
 
         row_exp : The current experiment's global parameters
-
-        output_name : the name of the results csv files saved in results/
 
         init_clusters : boolean indicating whether cluster assignement is done before initial training
 
@@ -277,48 +273,7 @@ def train_central(main_model, train_loader, row_exp):
     return main_model, accuracy
 
 
-
-def loss_calculation(model : nn.modules, train_loader : DataLoader, row_exp : dict) -> float:
-
-    """ Utility function to calculate average_loss across all samples <train_loader>
-
-    Args:
-
-        model : the input server model
-        
-        train_loader : DataLoader with the dataset to use for loss calculation
-
-        row_exp : The current experiment's global parameters
-    """ 
-    import torch
-    import torch.nn as nn
-
-    criterion = nn.CrossEntropyLoss()  
-
-    model.eval()
-
-    total_loss = 0.0
-    total_samples = 0
-
-    #torch.manual_seed(row_exp['seed'])
-
-    with torch.no_grad():
-
-        for inputs, targets in train_loader:
-
-            outputs = model(inputs)
-
-            loss = criterion(outputs, targets)
-
-            total_loss += loss.item() * inputs.size(0)
-            total_samples += inputs.size(0)
-
-    average_loss = total_loss / total_samples
-
-    return average_loss
-
-
-def test_model(model : nn.Module, test_loader : DataLoader, row_exp : dict) -> float:
+def test_model(model : nn.Module, test_loader : DataLoader) -> float:
 
     """ Calcualtes model accuracy (percentage) on the <test_loader> Dataset
     
@@ -327,14 +282,10 @@ def test_model(model : nn.Module, test_loader : DataLoader, row_exp : dict) -> f
         model : the input server model
         
         test_loader : DataLoader with the dataset to use for testing
-
-        row_exp : The current experiment's global parameters
     """
     
     criterion = nn.CrossEntropyLoss()
 
-    #torch.manual_seed(row_exp['seed'])
-    
     model.eval()
 
     correct = 0

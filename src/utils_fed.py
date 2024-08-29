@@ -1,6 +1,7 @@
 from src.fedclass import Server
 import torch.nn as nn
 import pandas as pd
+from torch.utils.data import DataLoader
 
 def send_server_model_to_client(list_clients : list, my_server : Server) -> None:
     
@@ -232,6 +233,44 @@ def init_server_cluster(my_server : Server, list_clients : list, row_exp : dict,
     return 
 
 
+def loss_calculation(model : nn.modules, train_loader : DataLoader) -> float:
+
+    """ Utility function to calculate average_loss across all samples <train_loader>
+
+    Args:
+
+        model : the input server model
+        
+        train_loader : DataLoader with the dataset to use for loss calculation
+    """ 
+    import torch
+    import torch.nn as nn
+
+    criterion = nn.CrossEntropyLoss()  
+
+    model.eval()
+
+    total_loss = 0.0
+    total_samples = 0
+
+    with torch.no_grad():
+
+        for inputs, targets in train_loader:
+
+            outputs = model(inputs)
+
+            loss = criterion(outputs, targets)
+
+            total_loss += loss.item() * inputs.size(0)
+            total_samples += inputs.size(0)
+
+    average_loss = total_loss / total_samples
+
+    return average_loss
+
+
+
+
 def set_client_cluster(my_server : Server, list_clients : list, row_exp : dict) -> None:
     """ Function to calculate cluster membership for client-side CFL (sets param cluster id)
     
@@ -242,8 +281,7 @@ def set_client_cluster(my_server : Server, list_clients : list, row_exp : dict) 
 
         row_exp : Dictionary containing the different global experiement parameters
     """
-    
-    from src.utils_training import loss_calculation
+
     import numpy as np
     import copy
     
