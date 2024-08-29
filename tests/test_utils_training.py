@@ -1,6 +1,8 @@
 import os
 import pytest
 
+from pathlib import Path
+
 if os.getenv('_PYTEST_RAISE', "0") != "0":
 
     @pytest.hookimpl(tryfirst=True)
@@ -11,18 +13,11 @@ if os.getenv('_PYTEST_RAISE', "0") != "0":
     def pytest_internalerror(excinfo):
         raise excinfo.value
 
-def test_run_cfl_benchmark():
 
-    from pathlib import Path
-    import numpy as np
-    import pandas as pd
-    import pickle 
+def utils_extract_params(file_path: Path):
+    """  Creates a dictionary row_exp with the parameters for the experiment given a well formated results file path
+    """
 
-    from src.utils_data import setup_experiment    
-    from src.utils_training import run_benchmark
-
-    file_path = Path("tests/refs/benchmark-global-federated_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
-    
     with open (file_path, "r") as fp:
         
         keys = ['exp_type', 'dataset' , 'heterogeneity_type' , 'num_clients',
@@ -36,22 +31,89 @@ def test_run_cfl_benchmark():
             zip(keys,
                 parameters[:3] + [int(x) for x in  parameters[3:]])
             )
+    
+    return row_exp
 
-        model_server, list_clients = setup_experiment(row_exp)
 
-    df_results = run_benchmark(list_clients, row_exp, model_server, ['pers-centralized'])
+def test_run_cfl_benchmark_oracle():
+
+    from pathlib import Path
+    import numpy as np
+    import pandas as pd
+
+    from src.utils_data import setup_experiment    
+    from src.utils_training import run_benchmark
+
+    file_path = Path("tests/refs/pers-centralized_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+
+    row_exp = utils_extract_params(file_path) 
+   
+    model_server, list_clients = setup_experiment(row_exp)
+
+    df_results = run_benchmark(model_server, list_clients, row_exp)
+
+    assert all(np.isclose(df_results['accuracy'], pd.read_csv(file_path)['accuracy'], rtol=0.01))
+
+
+def test_run_cfl_benchmark_fl():
+
+    from pathlib import Path
+    import numpy as np
+    import pandas as pd
+
+    from src.utils_data import setup_experiment    
+    from src.utils_training import run_benchmark
+
+    file_path = Path("tests/refs/global-federated_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+
+    row_exp = utils_extract_params(file_path) 
+   
+    model_server, list_clients = setup_experiment(row_exp)
+
+    df_results = run_benchmark(model_server, list_clients, row_exp)
 
     assert all(np.isclose(df_results['accuracy'], pd.read_csv(file_path)['accuracy'], rtol=0.01))
 
 
 def test_run_cfl_client_side():
 
+    from pathlib import Path
+    import numpy as np
+    import pandas as pd
+
+    from src.utils_data import setup_experiment    
+    from src.utils_training import run_cfl_client_side
+
+    file_path = Path("tests/refs/client_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+
+    row_exp = utils_extract_params(file_path) 
+   
+    model_server, list_clients = setup_experiment(row_exp)
+
+    df_results =  run_cfl_client_side(model_server, list_clients, row_exp)
+
+    assert all(np.isclose(df_results['accuracy'], pd.read_csv(file_path)['accuracy'], rtol=0.01))
+
     return
 
 
 def test_run_cfl_server_side():
 
-    return 
+    from pathlib import Path
+    import numpy as np
+    import pandas as pd
 
-if __name__ == "__main__":
-    test_run_cfl_benchmark()
+    from src.utils_data import setup_experiment    
+    from src.utils_training import run_cfl_server_side
+
+    file_path = Path("tests/refs/server_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+
+    row_exp = utils_extract_params(file_path) 
+   
+    model_server, list_clients = setup_experiment(row_exp)
+
+    df_results =  run_cfl_server_side(model_server, list_clients, row_exp)
+
+    assert all(np.isclose(df_results['accuracy'], pd.read_csv(file_path)['accuracy'], rtol=0.01))
+
+    return

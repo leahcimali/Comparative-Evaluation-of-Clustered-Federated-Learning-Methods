@@ -98,7 +98,6 @@ def plot_histogram_clusters(df_results: DataFrame, title : str) -> None:
     import matplotlib.pyplot as plt
     import numpy as np 
         
-
     labels_heterogeneity = list(df_results['heterogeneity_class'].unique())
 
     bar_width = bar_depth = 0.5

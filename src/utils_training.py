@@ -19,9 +19,8 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
      Args:
         
         model_server : The nn.Module to save
-
+        
         list_clients : A list of Client Objects used as nodes in the FL protocol
-            
         row_exp : The current experiment's global parameters
 
     """
@@ -32,20 +31,21 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
     torch.manual_seed(row_exp['seed'])
 
     model_server = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
-    
+ 
     model_server.clusters_models= {cluster_id: copy.deepcopy(model_server.model) for cluster_id in range(row_exp['num_clusters'])}
-    
+  
     setattr(model_server, 'num_clusters', row_exp['num_clusters'])
 
     k_means_clustering(list_clients, row_exp['num_clusters'], row_exp['seed'])
     
     model_server = train_federated(model_server, list_clients, row_exp, use_cluster_models = True)
 
-    list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
+    list_clients = add_clients_accuracies(model_server, list_clients)
 
     df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
     return df_results 
+
 
 
 
@@ -85,27 +85,23 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
         
         set_client_cluster(model_server, list_clients, row_exp)
 
-    list_clients = add_clients_accuracies(model_server, list_clients, row_exp)
+    list_clients = add_clients_accuracies(model_server, list_clients)
 
     df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
     return df_results
     
 
-def run_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module, list_exps : list) -> pd.DataFrame:
+def run_benchmark(main_model : nn.Module, list_clients : list, row_exp : dict) -> pd.DataFrame:
 
     """ Benchmark function to calculate baseline FL results and ``optimal'' personalization results if clusters are known in advance
 
     Args:
-        
+        main_model : Type of Server model needed    
+    
         list_clients : A list of Client Objects used as nodes in the FL protocol  
 
         row_exp : The current experiment's global parameters
-
-        main_model : Type of Server model needed (default to SimpleLinear())
-
-        list_exps : list containing the experiment names to run (current supported options: 'global-federated' and 'pers-centralized')
-
     """
 
     import pandas as pd 
@@ -119,35 +115,33 @@ def run_benchmark(list_clients : list, row_exp : dict, main_model : nn.Module, l
     torch.manual_seed(row_exp['seed'])
     torch.use_deterministic_algorithms(True)
 
-    for training_type in list_exps: 
+    curr_model = main_model if row_exp['exp_type'] == 'global-federated' else SimpleLinear()
+
+    match row_exp['exp_type']:
+    
+        case 'pers-centralized':
+
+            for heterogeneity_class in list_heterogeneities:
+                
+                list_clients_filtered = [client for client in list_clients if client.heterogeneity_class == heterogeneity_class]
+
+                train_loader, test_loader = centralize_data(list_clients_filtered)
+
+                model_trained, _ = train_central(curr_model, train_loader, row_exp) 
+
+                test_benchmark(model_trained, list_clients_filtered, test_loader, row_exp)
+    
+        case 'global-federated':
+                
+            model_server = copy.deepcopy(curr_model)
+
+            model_trained = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
         
-        curr_model = main_model if training_type == 'global-federated' else SimpleLinear()
+            _, test_loader = centralize_data(list_clients)
 
-        match training_type:
-        
-            case 'pers-centralized':
+            test_benchmark(model_trained.model, list_clients, test_loader, row_exp)
 
-                for heterogeneity_class in list_heterogeneities:
-                    
-                    list_clients_filtered = [client for client in list_clients if client.heterogeneity_class == heterogeneity_class]
-
-                    train_loader, test_loader = centralize_data(list_clients_filtered)
-
-                    model_trained, _ = train_central(curr_model, train_loader, row_exp) 
-
-                    test_benchmark(model_trained, list_clients_filtered, test_loader, row_exp)
-        
-            case 'global-federated':
-                    
-                model_server = copy.deepcopy(curr_model)
-
-                model_trained = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
-            
-                _, test_loader = centralize_data(list_clients)
-
-                test_benchmark(model_trained.model, list_clients, test_loader, row_exp)
-
-        df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
+    df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
     return df_results
 
@@ -170,7 +164,7 @@ def test_benchmark(model_trained : nn.Module, list_clients : list, test_loader :
          
     from src.utils_training import test_model
     
-    global_acc = test_model(model_trained, test_loader, row_exp) 
+    global_acc = test_model(model_trained, test_loader) 
                      
     for client in list_clients : 
         
@@ -316,7 +310,7 @@ def test_model(model : nn.Module, test_loader : DataLoader) -> float:
     return accuracy
 
 
-def add_clients_accuracies(model_server : nn.Module, list_clients : list, row_exp : dict) -> list:
+def add_clients_accuracies(model_server : nn.Module, list_clients : list) -> list:
 
     """
     Evaluates the cluster's models saved in <model_server> on the relevant list of clients and sets the attribute accuracy.
@@ -324,14 +318,12 @@ def add_clients_accuracies(model_server : nn.Module, list_clients : list, row_ex
     Args:
         model_server : Server object which contains the cluster models
 
-        list_clients : list of Client objects which belong to the different clusters
-
-        row_exp : The current experiment's global parameters
+        list_clients : list of Client objects which belong to the different clusters<
     """
 
     for client in list_clients :
 
-        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'], row_exp)
+        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'])
         
         setattr(client, 'accuracy', acc)
 

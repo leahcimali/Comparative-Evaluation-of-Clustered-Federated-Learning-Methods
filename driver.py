@@ -36,7 +36,7 @@ def main_driver(exp_type, dataset, heterogeneity_type, num_clients, num_samples_
 
         if get_uid(str(file_name.stem)) == hash_outputname:
 
-            print(f"Experiment {str(file_name.stem)} already executed in with results in \n {output_name}.json", lvl="warning")   
+            print(f"Experiment {str(file_name.stem)} already executed in with results in \n {output_name}.json")   
         
             return 
     try:
@@ -62,21 +62,21 @@ def launch_experiment(model_server, list_clients, row_exp, output_name, save_res
 
         str_row_exp = ':'.join(row_exp.to_string().replace('\n', '/').split())
 
-        if row_exp['exp_type'] == "benchmark":
+        if row_exp['exp_type'] == "global-federated" or row_exp['exp_type'] == "pers-centralized":
             
-            print(f"Launching benchmark experiment with parameters:\n{str_row_exp}", lvl="info")   
+            print(f"Launching benchmark experiment with parameters:\n{str_row_exp}")   
 
-            df_results = run_benchmark(list_clients, row_exp, main_model=model_server, list_exps = ['global-federated', 'pers-centralized'] )
+            df_results = run_benchmark(model_server, list_clients, row_exp)
             
         elif row_exp['exp_type'] == "client":
             
-            print(f"Launching client-side experiment with parameters:\n {str_row_exp}", lvl="info")
+            print(f"Launching client-side experiment with parameters:\n {str_row_exp}")
 
             df_results = run_cfl_client_side(model_server, list_clients, row_exp)
             
         elif row_exp['exp_type'] == "server":
 
-            print(f"Launching server-side experiment with parameters:\n {str_row_exp}", lvl="info")
+            print(f"Launching server-side experiment with parameters:\n {str_row_exp}")
 
             df_results = run_cfl_server_side(model_server, list_clients, row_exp)
             
