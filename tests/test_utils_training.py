@@ -94,8 +94,6 @@ def test_run_cfl_client_side():
 
     assert all(np.isclose(df_results['accuracy'], pd.read_csv(file_path)['accuracy'], rtol=0.01))
 
-    return
-
 
 def test_run_cfl_server_side():
 
@@ -116,4 +114,10 @@ def test_run_cfl_server_side():
 
     assert all(np.isclose(df_results['accuracy'], pd.read_csv(file_path)['accuracy'], rtol=0.01))
 
-    return
+
+if __name__ == "__main__":
+    test_run_cfl_client_side()
+    test_run_cfl_server_side()
+    test_run_cfl_benchmark_fl()
+    test_run_cfl_benchmark_oracle()
+    

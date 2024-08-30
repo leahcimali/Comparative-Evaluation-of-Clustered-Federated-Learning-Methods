@@ -1,4 +1,3 @@
-experiment_1.txt
 *.py~
 results/*
 .vscode/*
@@ -9,5 +8,5 @@ launch.json
 backup_results/*
 *.sh
 tests/__pycache__/*
-MNIST/*
+datasets/*
 pub/*

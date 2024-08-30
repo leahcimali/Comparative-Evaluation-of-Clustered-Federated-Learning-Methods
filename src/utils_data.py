@@ -46,15 +46,24 @@ def create_label_dict(dataset : dict, seed : int) -> dict:
     """
     import sys
     import numpy as np
+    
+    import torchvision
     from tensorflow.keras.datasets import mnist, fashion_mnist
     from extra_keras_datasets import kmnist
+    
+    #import torchvision
 
     if dataset == "fashion-mnist":
-        (x_train, y_train), _ = fashion_mnist.load_data()
+        fashion_mnist = torchvision.datasets.MNIST("datasets", download=True)
+        (x_train, y_train) = fashion_mnist.data, fashion_mnist.targets
+    
     elif dataset == 'mnist':
-        (x_train, y_train), _ = mnist.load_data()
+        mnist = torchvision.datasets.MNIST("datasets", download=True)
+        (x_train, y_train) = mnist.data, mnist.targets
+
     elif dataset == 'kmnist':
         (x_train, y_train), _ = kmnist.load_data()
+    
     else:
         sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'kmnist']")    
 
@@ -66,7 +75,7 @@ def create_label_dict(dataset : dict, seed : int) -> dict:
        
         label_samples_x = x_train[label_indices]
           
-        label_dict[label] = shuffle_list(label_samples_x, seed)
+        label_dict[label] = label_samples_x
         
     return label_dict
 
@@ -540,10 +549,10 @@ def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=64)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=64)
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=True)
     
     return train_loader, test_loader
 
