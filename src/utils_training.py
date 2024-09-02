@@ -16,13 +16,11 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
     """ Driver function for server-side cluster FL algorithm. The algorithm personalize training by clusters obtained
     from model weights (k-means).
     
-     Args:
-        
-        model_server : The nn.Module to save
-        
-        list_clients : A list of Client Objects used as nodes in the FL protocol
-        row_exp : The current experiment's global parameters
+    Arguments:
 
+        main_model : Type of Server model needed    
+        list_clients : A list of Client Objects used as nodes in the FL protocol  
+        row_exp : The current experiment's global parameters
     """
     from src.utils_fed import k_means_clustering
     import copy
@@ -40,13 +38,16 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
     
     model_server = train_federated(model_server, list_clients, row_exp, use_cluster_models = True)
 
-    list_clients = add_clients_accuracies(model_server, list_clients)
+    for client in list_clients :
+
+        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'])
+        
+        setattr(client, 'accuracy', acc)
+
 
     df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
     return df_results 
-
-
 
 
 def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict, init_cluster=True) -> pd.DataFrame:
@@ -54,26 +55,19 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
     """ Driver function for client-side cluster FL algorithm. The algorithm personalize training by clusters obtained
     from model weights (k-means).
     
-     Args:
-        
-        model_server : The nn.Module to save
 
-        list_clients : A list of Client Objects used as nodes in the FL protocol
+    Arguments:
 
+        main_model : Type of Server model needed    
+        list_clients : A list of Client Objects used as nodes in the FL protocol  
         row_exp : The current experiment's global parameters
-
-        init_clusters : boolean indicating whether cluster assignement is done before initial training
-
+        init_cluster : A boolean indicating whether to initialize cluster prior to training
     """
 
-    from src.utils_fed import init_server_cluster, set_client_cluster, fedavg
+    from src.utils_fed import  set_client_cluster, fedavg
     import torch
 
     torch.manual_seed(row_exp['seed'])
-
-    if init_cluster == True : 
-        
-        init_server_cluster(model_server, list_clients, row_exp, p_expert_opinion=0.0)
     
     for _ in range(row_exp['federated_rounds']):
 
@@ -85,22 +79,25 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
         
         set_client_cluster(model_server, list_clients, row_exp)
 
-    list_clients = add_clients_accuracies(model_server, list_clients)
+    for client in list_clients :
+
+        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'])
+        
+        setattr(client, 'accuracy', acc)
 
     df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
     return df_results
-    
+
 
 def run_benchmark(main_model : nn.Module, list_clients : list, row_exp : dict) -> pd.DataFrame:
 
     """ Benchmark function to calculate baseline FL results and ``optimal'' personalization results if clusters are known in advance
 
-    Args:
-        main_model : Type of Server model needed    
-    
-        list_clients : A list of Client Objects used as nodes in the FL protocol  
+    Arguments:
 
+        main_model : Type of Server model needed    
+        list_clients : A list of Client Objects used as nodes in the FL protocol  
         row_exp : The current experiment's global parameters
     """
 
@@ -129,7 +126,11 @@ def run_benchmark(main_model : nn.Module, list_clients : list, row_exp : dict) -
 
                 model_trained, _ = train_central(curr_model, train_loader, row_exp) 
 
-                test_benchmark(model_trained, list_clients_filtered, test_loader, row_exp)
+                global_acc = test_model(model_trained, test_loader) 
+                     
+                for client in list_clients_filtered : 
+        
+                    setattr(client, 'accuracy', global_acc)
     
         case 'global-federated':
                 
@@ -139,55 +140,27 @@ def run_benchmark(main_model : nn.Module, list_clients : list, row_exp : dict) -
         
             _, test_loader = centralize_data(list_clients)
 
-            test_benchmark(model_trained.model, list_clients, test_loader, row_exp)
+            global_acc = test_model(model_trained.model, test_loader) 
+                     
+            for client in list_clients : 
+        
+                setattr(client, 'accuracy', global_acc)
 
     df_results = pd.DataFrame.from_records([c.to_dict() for c in list_clients])
     
     return df_results
 
 
-def test_benchmark(model_trained : nn.Module, list_clients : list, test_loader : DataLoader, row_exp : dict):
-
-    """ Tests <model_trained> on test_loader (global) dataset and sets the attribute accuracy on each Client 
-
-        Args:
-                
-            list_clients : A list of Client Objects used as nodes in the FL protocol  
-
-            row_exp : The current experiment's global parameters
-
-            main_model : Type of Server model needed
-
-            training_type : a value frmo ['global-federated', 'pers-centralized'] 
-
-    """       
-         
-    from src.utils_training import test_model
-    
-    global_acc = test_model(model_trained, test_loader) 
-                     
-    for client in list_clients : 
-        
-        #client_acc = test_model(model_trained, client.data_loader['test'])*100
-
-        setattr(client, 'accuracy', global_acc)
-    
-    return global_acc
-
-
 def train_federated(main_model, list_clients, row_exp, use_cluster_models = False):
     
     """Controler function to launch federated learning
 
-    Args:
-        
-        main_model : Server model used in our experiment
-        
-        list_clients : A list of Client Objects used as nodes in the FL protocol  
+    Arguments:
 
-        row_exp : The current experiment's global parameters
-
-        use_cluster_models : Boolean to determine whether to use personalization by clustering
+        main_model: Server model used in our experiment
+        list_clients: A list of Client Objects used as nodes in the FL protocol  
+        row_exp: The current experiment's global parameters
+        use_cluster_models: Boolean to determine whether to use personalization by clustering
     """
 
     from src.utils_fed import send_server_model_to_client, send_cluster_models_to_clients, fedavg
@@ -220,12 +193,10 @@ def train_central(main_model, train_loader, row_exp):
 
     """ Main training function for centralized learning
     
-    Args:
+    Arguments:
 
         main_model : Server model used in our experiment
-        
         train_loader : DataLoader with the dataset to use for training
-
         row_exp : The current experiment's global parameters
 
     """
@@ -271,10 +242,8 @@ def test_model(model : nn.Module, test_loader : DataLoader) -> float:
 
     """ Calcualtes model accuracy (percentage) on the <test_loader> Dataset
     
-    Args:
-
+    Arguments:
         model : the input server model
-        
         test_loader : DataLoader with the dataset to use for testing
     """
     
@@ -308,23 +277,3 @@ def test_model(model : nn.Module, test_loader : DataLoader) -> float:
     accuracy = (correct / total) * 100
 
     return accuracy
-
-
-def add_clients_accuracies(model_server : nn.Module, list_clients : list) -> list:
-
-    """
-    Evaluates the cluster's models saved in <model_server> on the relevant list of clients and sets the attribute accuracy.
-
-    Args:
-        model_server : Server object which contains the cluster models
-
-        list_clients : list of Client objects which belong to the different clusters<
-    """
-
-    for client in list_clients :
-
-        acc = test_model(model_server.clusters_models[client.cluster_id], client.data_loader['test'])
-        
-        setattr(client, 'accuracy', acc)
-
-    return list_clients

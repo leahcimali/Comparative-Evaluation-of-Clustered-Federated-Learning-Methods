@@ -3,7 +3,7 @@ def calc_global_metrics(labels_true: list, labels_pred: list) -> dict:
 
     """ Calculate global metrics based on model weights
 
-    Args:
+    Arguments:
         labels_true : list
             list of ground truth labels
         labels_pred : list

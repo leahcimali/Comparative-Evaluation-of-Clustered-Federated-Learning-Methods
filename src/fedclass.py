@@ -12,7 +12,7 @@ class Client:
         
         """Initialize the Client object
 
-        Args:
+        Arguments:
             id : int
                 unique client identifier
             data : dict
@@ -70,7 +70,7 @@ class Server:
     def __init__(self,model,num_clusters: int=None):
         """Initialize a Server object with an empty dictionary of cluster_models
 
-        Args:
+        Arguments:
         model: nn.Module
             The nn learing model the server is associated with
         num_clusters: int

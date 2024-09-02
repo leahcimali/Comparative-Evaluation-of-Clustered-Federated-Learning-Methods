@@ -1,7 +1,8 @@
 
 from pandas import DataFrame
 from pathlib import Path
-   
+from torch import tensor
+
 
 def save_histograms() -> None:
 
@@ -50,7 +51,7 @@ def append_empty_clusters(list_clusters : list) -> list:
     """
     Utility function for ``get_clusters'' to handle the situation where some clusters are empty by appending the clusters ID
     
-    Args:
+    Arguments:
         list_clusters: List of clusters with clients
 
     Returns:
@@ -71,8 +72,10 @@ def append_empty_clusters(list_clusters : list) -> list:
 
 
 
-def get_z_nclients(df_results, x_het, y_clust, labels_heterogeneity):
+def get_z_nclients(df_results : dict, x_het : list, y_clust : list, labels_heterogeneity : list) -> list:
     
+    """ Returns the number of clients associated with a given heterogeneity class for each cluster"""
+
     z_nclients = [0]* len(x_het)
 
     for i in range(len(z_nclients)):
@@ -84,11 +87,22 @@ def get_z_nclients(df_results, x_het, y_clust, labels_heterogeneity):
 
 
 
+def plot_img(img : tensor) -> None:
+
+    """Utility function to plot an image of any shape"""
+
+    from torchvision import transforms
+    import matplotlib.pyplot as plt
+
+    plt.imshow(transforms.ToPILImage()(img))
+
+
+
 def plot_histogram_clusters(df_results: DataFrame, title : str) -> None:
     
     """ Function to create 3D Histograms of clients to cluster assignments showing client's heterogeneity class 
 
-    Args:
+    Arguments:
         
         df_results : DataFrame containing all parameters from the resulting csv files
         

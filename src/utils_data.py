@@ -7,7 +7,7 @@ def shuffle_list(list_samples : int, seed : int) -> list:
     
     """Function to shuffle the samples list
 
-    Args:
+    Arguments:
         list_samples : A list of samples to shuffle
         seed : Randomization seed for reproducible results
     
@@ -29,13 +29,12 @@ def shuffle_list(list_samples : int, seed : int) -> list:
 
 
 
-def create_label_dict(dataset : dict, seed : int) -> dict:
+def create_label_dict(dataset : dict) -> dict:
    
     """ Create a dictionary of dataset samples 
 
-    Args:
+    Arguments:
         dataset: The name of the dataset to use ('fashion-mnist', 'mnist', or 'kmnist')
-        seed : Randomization seed for reproducible results
    
     Returns:
         A dictionary of data of the form {'x': [], 'y': []}
@@ -60,6 +59,12 @@ def create_label_dict(dataset : dict, seed : int) -> dict:
     elif dataset == 'mnist':
         mnist = torchvision.datasets.MNIST("datasets", download=True)
         (x_train, y_train) = mnist.data, mnist.targets
+        x_train = x_train.unsqueeze(1)
+
+    elif dataset == "cifar10":
+        cifar10 = torchvision.datasets.CIFAR10("datasets", download=True)
+        (x_train, y_train) = cifar10.data, cifar10.targets
+        x_train = np.transpose(x_train, (0, 3, 1, 2))
 
     elif dataset == 'kmnist':
         (x_train, y_train), _ = kmnist.load_data()
@@ -71,21 +76,18 @@ def create_label_dict(dataset : dict, seed : int) -> dict:
 
     for label in range(10):
        
-        label_indices = np.where(y_train == label)[0]
-       
+        label_indices = np.where(np.array(y_train) == label)[0]   
         label_samples_x = x_train[label_indices]
-          
         label_dict[label] = label_samples_x
         
     return label_dict
-
 
 
 def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : dict, seed : int) -> dict:
     
     """Distribute a dataset evenly accross num_clients clients. Works with datasets with 10 labels
     
-    Args:
+    Arguments:
         num_clients : Number of clients of interest
             
         num_samples_by_label : Number of samples of each labels by client
@@ -96,7 +98,7 @@ def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : di
     
     import numpy as np 
 
-    label_dict = create_label_dict(dataset, seed)
+    label_dict = create_label_dict(dataset)
 
     clients_dictionary = {}
     client_dataset = {}
@@ -125,7 +127,7 @@ def rotate_images(client: Client, rotation: int) -> None:
     
     """ Rotate a Client's images, used for ``concept shift on features''
     
-    Args:
+    Arguments:
         client : A Client object whose dataset images we want to rotate
         rotation : the rotation angle to apply  0 < angle < 360
     """
@@ -154,7 +156,7 @@ def data_preparation(client : Client, row_exp : dict) -> None:
     
     """Saves Dataloaders of train and test data in the Client attributes 
     
-    Args:
+    Arguments:
         client : The client object to modify
         row_exp : The current experiment's global parameters
     """
@@ -200,9 +202,9 @@ def get_dataset_heterogeneities(heterogeneity_type: str) -> dict:
     """
     Retrieves the "skew" and "ratio" attributes of a given heterogeneity type
 
-    Args:
+    Arguments:
         heterogeneity_type : The label of the heterogeneity scenario (labels-distribution-skew, concept-shift-on-labels, quantity-skew)
-    Returns
+    Returns:
         A dictionary of the form {<het>: []} where <het> is the applicable heterogeneity type 
     """
     dict_params = {}
@@ -226,7 +228,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     """
     Setup function to create and personalize client's data 
 
-    Args:
+    Arguments:
         row_exp : The current experiment's global parameters
     
     Returns:
@@ -237,13 +239,16 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     """
 
     from src.models import SimpleLinear
+    from src.utils_fed import init_server_cluster
     import torch
     
     list_clients = []
     
     torch.manual_seed(row_exp['seed'])
 
-    model_server = Server(SimpleLinear())
+    imgs_params = {'mnist': (24,1) , 'fashion-mnist': (24,1), 'kmnist': (24,1), 'cifar10': (32,3)}
+
+    model_server = Server(SimpleLinear(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
 
     dict_clients = get_clients_data(row_exp['num_clients'],
                                     row_exp['num_samples_by_label'],
@@ -255,7 +260,10 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
         list_clients.append(Client(i, dict_clients[i]))
 
     list_clients = add_clients_heterogeneity(list_clients, row_exp)
-   
+    
+    if row_exp['exp_type'] == "client":
+        init_server_cluster(model_server, list_clients, row_exp, imgs_params['dataset'])
+
     return model_server, list_clients
 
 
@@ -263,7 +271,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 def add_clients_heterogeneity(list_clients: list, row_exp: dict) -> list:
     """ Utility function to apply the relevant heterogeneity classes to each client
     
-    Args:
+    Arguments:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
     Returns:
@@ -296,7 +304,7 @@ def apply_label_swap(list_clients : list, row_exp : dict, list_swaps : list) -> 
     
     """ Utility function to apply label swaps on Client images
 
-    Args:
+    Arguments:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
         list_swap : List containing the labels to swap by heterogeneity class
@@ -334,7 +342,7 @@ def apply_rotation(list_clients : list, row_exp : dict) -> list:
 
     """ Utility function to apply rotation 0,90,180 and 270 to 1/4 of Clients 
 
-    Args:
+    Arguments:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
     
@@ -373,7 +381,7 @@ def apply_labels_skew(list_clients : list, row_exp : dict, list_skews : list, li
     
     """ Utility function to apply label skew to Clients' data 
 
-    Args:
+    Arguments:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
     
@@ -413,7 +421,7 @@ def apply_quantity_skew(list_clients : list, row_exp : dict, list_skews : list) 
      For each element in list_skews, apply the skew to an equal subset of Clients 
 
 
-    Args:
+    Arguments:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
         list_skew : List of float 0 < i < 1  with quantity skews to subsample data
@@ -455,7 +463,7 @@ def apply_features_skew(list_clients : list, row_exp : dict) -> list :
     
     """ Utility function to apply features skew to Clients' data 
 
-    Args:
+    Arguments:
         list_clients : List of Client Objects with specific heterogeneity_class 
         row_exp : The current experiment's global parameters
     
@@ -500,7 +508,7 @@ def swap_labels(labels : list, client : Client, heterogeneity_class : int) -> Cl
 
     """ Utility Function for label swapping used for concept shift on labels. Sets the attribute "heterogeneity class"
     
-    Args:
+    Arguments:
         labels : Labels to swap
         client : The Client object whose data we want to apply the swap on
     Returns:
@@ -526,7 +534,7 @@ def swap_labels(labels : list, client : Client, heterogeneity_class : int) -> Cl
 def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     """Centralize data of the federated learning setup for central model comparison
 
-    Args:
+    Arguments:
         list_clients : The list of Client Objects
 
     Returns:
@@ -564,7 +572,7 @@ def unbalancing(client : Client ,labels_list : list ,ratio_list: list) -> Client
     
     """ Downsample the dataset of a client with each elements of the labels_list will be downsampled by the corresponding ration of ratio_list
 
-    Args: 
+    Arguments: 
         client : Client whose dataset we want to downsample
         labels_list : Labels to downsample in the Client's dataset
         ratio_list : Ratios to use for downsampling the labels
@@ -572,6 +580,7 @@ def unbalancing(client : Client ,labels_list : list ,ratio_list: list) -> Client
     
     import pandas as pd
     from imblearn.datasets import make_imbalance
+    from math import prod
 
     def ratio_func(y, multiplier, minority_class):
     
@@ -584,10 +593,10 @@ def unbalancing(client : Client ,labels_list : list ,ratio_list: list) -> Client
     x_train = client.data['x']
     y_train = client.data['y']
     
-    (_, i_dim,j_dim) = x_train.shape
+    orig_shape = x_train.shape
     
      # flatten the images 
-    X_resampled = x_train.reshape(-1, i_dim * j_dim)
+    X_resampled = x_train.reshape(-1, prod(orig_shape[1:]))
     y_resampled = y_train
     
     for i in range(len(labels_list)):
@@ -599,7 +608,7 @@ def unbalancing(client : Client ,labels_list : list ,ratio_list: list) -> Client
                 sampling_strategy=ratio_func,
                 **{"multiplier": ratio_list[i], "minority_class": labels_list[i]})
 
-    client.data['x'] = X_resampled.to_numpy().reshape(-1, i_dim, j_dim)
+    client.data['x'] = X_resampled.to_numpy().reshape(-1, *orig_shape[1:])
     client.data['y'] = y_resampled
     
     return client
@@ -611,7 +620,7 @@ def dilate_images(x_train : ndarray, kernel_size : tuple = (3, 3)) -> ndarray:
     Make image 'bolder' for features distribution skew setup
     
     
-    Args:
+    Arguments:
         x_train : Input batch of images (3D array with shape (n, height, width)).
         kernel_size : Size of the structuring element/kernel for dilation.
 
@@ -643,7 +652,7 @@ def erode_images(x_train : ndarray, kernel_size : tuple =(3, 3)) -> ndarray:
     Perform erosion operation on a batch of images using a given kernel.
     Make image 'finner' for features distribution skew setup
 
-    Args:
+    Arguments:
         x_train : Input batch of images (3D array with shape (n, height, width)).
         kernel_size :  Size of the structuring element/kernel for erosion.
 
@@ -675,7 +684,7 @@ def save_results(model_server : Server, row_exp : dict ) -> None:
     """
     Saves model_server in row_exp['output'] as *.pth object
 
-    Args:
+    Arguments:
         model_server : The nn.Module to save
         row_exp :  The current experiment's global parameters
     """

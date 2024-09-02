@@ -16,7 +16,7 @@ def cprint(msg: str, lvl: str = "info") -> None:
     """
     Print message to the console at the desired logging level.
 
-    Args:
+    Arguments:
         msg (str): Message to print.
         lvl (str): Logging level between "debug", "info", "warning", "error" and "critical".
                    The default value is "info".
