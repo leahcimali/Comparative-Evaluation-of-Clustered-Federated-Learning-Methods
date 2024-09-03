@@ -50,7 +50,7 @@ def run_cfl_server_side(model_server : Server, list_clients : list, row_exp : di
     return df_results 
 
 
-def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict, init_cluster=True) -> pd.DataFrame:
+def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : dict) -> pd.DataFrame:
 
     """ Driver function for client-side cluster FL algorithm. The algorithm personalize training by clusters obtained
     from model weights (k-means).
@@ -61,7 +61,6 @@ def run_cfl_client_side(model_server : Server, list_clients : list, row_exp : di
         main_model : Type of Server model needed    
         list_clients : A list of Client Objects used as nodes in the FL protocol  
         row_exp : The current experiment's global parameters
-        init_cluster : A boolean indicating whether to initialize cluster prior to training
     """
 
     from src.utils_fed import  set_client_cluster, fedavg
@@ -112,7 +111,7 @@ def run_benchmark(main_model : nn.Module, list_clients : list, row_exp : dict) -
     torch.manual_seed(row_exp['seed'])
     torch.use_deterministic_algorithms(True)
 
-    curr_model = main_model if row_exp['exp_type'] == 'global-federated' else SimpleLinear()
+    curr_model = main_model if row_exp['exp_type'] == 'global-federated' else main_model.model
 
     match row_exp['exp_type']:
     
@@ -202,7 +201,7 @@ def train_central(main_model, train_loader, row_exp):
     """
     criterion = nn.CrossEntropyLoss()
     
-    optimizer=optim.SGD
+    optimizer=optim.SGD if row_exp['nn_model'] == "linear" else optim.Adam
     optimizer = optimizer(main_model.parameters(), lr=0.01) 
    
     main_model.train()

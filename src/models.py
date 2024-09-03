@@ -3,10 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class SimpleLinear2(nn.Module):
+class SimpleLinear(nn.Module):
     """ Fully connected neural network with a single hidden layer of default size 200 and ReLU activations"""
     
-    def __init__(self, h1=200):
+    def __init__(self, in_size, n_channels):
         
         """ Initialization function
         Arguments:
@@ -14,8 +14,9 @@ class SimpleLinear2(nn.Module):
                 Desired size of the hidden layer 
         """
         super().__init__()
-        self.fc1 = nn.Linear(28*28, h1)
-        self.fc2 = nn.Linear(h1, 10)
+        self.fc1 = nn.Linear(in_size*in_size,200)
+        self.fc2 = nn.Linear(200, 10)
+        self.in_size = in_size
 
     def forward(self, x: torch.Tensor):
         
@@ -23,19 +24,19 @@ class SimpleLinear2(nn.Module):
         
         Arguments:
             x : torch.Tensor
-                input image of size 28 x 28
+                input image of size in_size x in_size
 
         Returns: 
             log_softmax probabilities of the output layer
         """
         
-        x = x.view(-1, 28 * 28)
+        x = x.view(-1, self.in_size * self.in_size)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
     
 
-class SimpleLinear(nn.Module):
+class SimpleConv(nn.Module):
 
     """ Convolutional neural network with 3 convolutional layers and one fully connected layer
     """
@@ -43,7 +44,7 @@ class SimpleLinear(nn.Module):
     def __init__(self,  in_size, n_channels):
         """ Initialization function
         """
-        super(SimpleLinear, self).__init__()
+        super(SimpleConv, self).__init__()
                 
         self.conv1 = nn.Conv2d(n_channels, 16, 3, padding=1)
         self.conv2 = nn.Conv2d(16, 32, 3,  padding=1)

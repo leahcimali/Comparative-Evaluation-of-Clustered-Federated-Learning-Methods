@@ -1,7 +1,0 @@
-id,cluster_id,heterogeneity_class,accuracy
-0,,none,64.66666666666666
-1,,erosion,39.5
-2,,dilatation,79.83333333333333
-3,,none,64.66666666666666
-4,,erosion,39.5
-5,,dilatation,79.83333333333333

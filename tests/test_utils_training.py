@@ -20,7 +20,7 @@ def utils_extract_params(file_path: Path):
 
     with open (file_path, "r") as fp:
         
-        keys = ['exp_type', 'dataset' , 'heterogeneity_type' , 'num_clients',
+        keys = ['exp_type', 'dataset', 'nn_model', 'heterogeneity_type' , 'num_clients',
                 'num_samples_by_label' , 'num_clusters', 'centralized_epochs',
                 'federated_rounds', 'seed']
         
@@ -29,7 +29,7 @@ def utils_extract_params(file_path: Path):
 
         row_exp = dict(
             zip(keys,
-                parameters[:3] + [int(x) for x in  parameters[3:]])
+                parameters[:4] + [int(x) for x in  parameters[4:]])
             )
     
     return row_exp
@@ -44,7 +44,7 @@ def test_run_cfl_benchmark_oracle():
     from src.utils_data import setup_experiment    
     from src.utils_training import run_benchmark
 
-    file_path = Path("tests/refs/pers-centralized_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+    file_path = Path("tests/refs/pers-centralized_fashion-mnist_linear_features-distribution-skew_8_100_3_5_5_42.csv")
 
     row_exp = utils_extract_params(file_path) 
    
@@ -64,7 +64,7 @@ def test_run_cfl_benchmark_fl():
     from src.utils_data import setup_experiment    
     from src.utils_training import run_benchmark
 
-    file_path = Path("tests/refs/global-federated_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+    file_path = Path("tests/refs/global-federated_fashion-mnist_linear_features-distribution-skew_8_100_3_5_5_42.csv")
 
     row_exp = utils_extract_params(file_path) 
    
@@ -84,7 +84,7 @@ def test_run_cfl_client_side():
     from src.utils_data import setup_experiment    
     from src.utils_training import run_cfl_client_side
 
-    file_path = Path("tests/refs/client_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+    file_path = Path("tests/refs/client_fashion-mnist_linear_features-distribution-skew_8_100_3_5_5_42.csv")
 
     row_exp = utils_extract_params(file_path) 
    
@@ -104,7 +104,7 @@ def test_run_cfl_server_side():
     from src.utils_data import setup_experiment    
     from src.utils_training import run_cfl_server_side
 
-    file_path = Path("tests/refs/server_fashion-mnist_features-distribution-skew_8_100_3_5_5_42.csv")
+    file_path = Path("tests/refs/server_fashion-mnist_linear_features-distribution-skew_8_100_3_5_5_42.csv")
 
     row_exp = utils_extract_params(file_path) 
    

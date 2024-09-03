@@ -28,38 +28,39 @@ def shuffle_list(list_samples : int, seed : int) -> list:
     return shuffled_list
 
 
-
-def create_label_dict(dataset : dict) -> dict:
-   
-    """ Create a dictionary of dataset samples 
+def create_label_dict(dataset : str, nn_model : str) -> dict:
+    
+    """Create a dictionary of dataset samples
 
     Arguments:
-        dataset: The name of the dataset to use ('fashion-mnist', 'mnist', or 'kmnist')
-   
+        dataset : The name of the dataset to use (e.g 'fashion-mnist', 'mnist', or 'cifar10')
+        nn_model : the training model type ('linear' or 'convolutional') 
+
     Returns:
-        A dictionary of data of the form {'x': [], 'y': []}
+        label_dict : A dictionary of data of the form {'x': [], 'y': []}
 
     Raises:
-        Error if the dataset name is unrecognized
-    
+        Error : if the dataset name is unrecognized
     """
+    
     import sys
     import numpy as np
-    
     import torchvision
-    from tensorflow.keras.datasets import mnist, fashion_mnist
     from extra_keras_datasets import kmnist
     
-    #import torchvision
-
     if dataset == "fashion-mnist":
         fashion_mnist = torchvision.datasets.MNIST("datasets", download=True)
         (x_train, y_train) = fashion_mnist.data, fashion_mnist.targets
     
+        if nn_model == "convolutional":
+            x_train = x_train.unsqueeze(1)
+
     elif dataset == 'mnist':
         mnist = torchvision.datasets.MNIST("datasets", download=True)
         (x_train, y_train) = mnist.data, mnist.targets
-        x_train = x_train.unsqueeze(1)
+        
+        if nn_model == "convolutional":
+            x_train = x_train.unsqueeze(1)
 
     elif dataset == "cifar10":
         cifar10 = torchvision.datasets.CIFAR10("datasets", download=True)
@@ -68,6 +69,9 @@ def create_label_dict(dataset : dict) -> dict:
 
     elif dataset == 'kmnist':
         (x_train, y_train), _ = kmnist.load_data()
+
+        if nn_model == "convolutional":
+            x_train = x_train.unsqueeze(1)
     
     else:
         sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'kmnist']")    
@@ -83,14 +87,15 @@ def create_label_dict(dataset : dict) -> dict:
     return label_dict
 
 
-def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : dict, seed : int) -> dict:
+def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : str, nn_model : str) -> dict:
     
     """Distribute a dataset evenly accross num_clients clients. Works with datasets with 10 labels
     
     Arguments:
         num_clients : Number of clients of interest
-            
         num_samples_by_label : Number of samples of each labels by client
+        dataset: The name of the dataset to use (e.g 'fashion-mnist', 'mnist', or 'cifar10')
+        nn_model : the training model type ('linear' or 'convolutional')
 
     Returns:
         client_dataset :  Dictionnary where each key correspond to a client index. The samples will be contained in the 'x' key and the target in 'y' key
@@ -98,7 +103,7 @@ def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : di
     
     import numpy as np 
 
-    label_dict = create_label_dict(dataset)
+    label_dict = create_label_dict(dataset, nn_model)
 
     clients_dictionary = {}
     client_dataset = {}
@@ -133,17 +138,22 @@ def rotate_images(client: Client, rotation: int) -> None:
     """
     
     import numpy as np
+    from math import prod
 
     images = client.data['x']
-    
-    if rotation >0 :
-    
+
+    if rotation > 0 :
+
         rotated_images = []
     
         for img in images:
     
+            orig_shape = img.shape             
+            img_flatten = img.flatten()
+
             rotated_img = np.rot90(img, k=rotation//90)  # Rotate image by specified angle
-    
+            rotated_img = rotated_img.reshape(*orig_shape)
+
             rotated_images.append(rotated_img)   
     
         client.data['x'] = np.array(rotated_images)
@@ -196,7 +206,6 @@ def data_preparation(client : Client, row_exp : dict) -> None:
     return 
 
 
-
 def get_dataset_heterogeneities(heterogeneity_type: str) -> dict:
 
     """
@@ -205,7 +214,7 @@ def get_dataset_heterogeneities(heterogeneity_type: str) -> dict:
     Arguments:
         heterogeneity_type : The label of the heterogeneity scenario (labels-distribution-skew, concept-shift-on-labels, quantity-skew)
     Returns:
-        A dictionary of the form {<het>: []} where <het> is the applicable heterogeneity type 
+        dict_params: A dictionary of the form {<het>: []} where <het> is the applicable heterogeneity type 
     """
     dict_params = {}
 
@@ -221,24 +230,22 @@ def get_dataset_heterogeneities(heterogeneity_type: str) -> dict:
         dict_params['skews'] = [0.1,0.2,0.6,1]
 
     return dict_params
-
+    
 
 def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
-    """
-    Setup function to create and personalize client's data 
+    """ Setup function to create and personalize client's data 
 
     Arguments:
         row_exp : The current experiment's global parameters
-    
-    Returns:
-        
-        model_server : A nn model used the server in the FL protocol
 
-        list_clients : A list of Client Objects used as nodes in the FL protocol
+
+    Returns: 
+        model_server, list_clients: a nn model used the server in the FL protocol, a list of Client Objects used as nodes in the FL protocol
+
     """
 
-    from src.models import SimpleLinear
+    from src.models import SimpleLinear, SimpleConv
     from src.utils_fed import init_server_cluster
     import torch
     
@@ -246,14 +253,20 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     
     torch.manual_seed(row_exp['seed'])
 
-    imgs_params = {'mnist': (24,1) , 'fashion-mnist': (24,1), 'kmnist': (24,1), 'cifar10': (32,3)}
+    imgs_params = {'mnist': (28,1) , 'fashion-mnist': (28,1), 'kmnist': (28,1), 'cifar10': (32,3)}
 
-    model_server = Server(SimpleLinear(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
+    if row_exp['nn_model'] == "linear":
+        
+        model_server = Server(SimpleLinear(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1])) 
+    
+    elif row_exp['nn_model'] == "convolutional": 
+        
+        model_server = Server(SimpleConv(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
 
     dict_clients = get_clients_data(row_exp['num_clients'],
                                     row_exp['num_samples_by_label'],
                                     row_exp['dataset'],
-                                    row_exp['seed'])    
+                                    row_exp['nn_model'])    
     
     for i in range(row_exp['num_clients']):
 
@@ -262,7 +275,8 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     list_clients = add_clients_heterogeneity(list_clients, row_exp)
     
     if row_exp['exp_type'] == "client":
-        init_server_cluster(model_server, list_clients, row_exp, imgs_params['dataset'])
+
+        init_server_cluster(model_server, list_clients, row_exp, imgs_params[row_exp['dataset']])
 
     return model_server, list_clients
 
@@ -677,27 +691,6 @@ def erode_images(x_train : ndarray, kernel_size : tuple =(3, 3)) -> ndarray:
         eroded_images[i] = eroded_image
 
     return eroded_images
-
-
-
-def save_results(model_server : Server, row_exp : dict ) -> None:
-    """
-    Saves model_server in row_exp['output'] as *.pth object
-
-    Arguments:
-        model_server : The nn.Module to save
-        row_exp :  The current experiment's global parameters
-    """
-    
-    import torch
-
-    if row_exp['exp_type'] == "client" or "server":
-    
-        for cluster_id in range(row_exp['num_clusters']): 
-    
-            torch.save(model_server.clusters_models[cluster_id].state_dict(), f"./results/{row_exp['output']}_{row_exp['exp_type']}_model_cluster_{cluster_id}.pth")
-
-    return 
 
 
 def get_uid(str_obj: str) -> str:

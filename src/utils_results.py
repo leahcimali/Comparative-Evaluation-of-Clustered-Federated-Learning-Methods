@@ -203,9 +203,9 @@ def summarize_results() -> None:
 
             list_params = path.stem.split('_')      
 
-            dict_exp_results = {"exp_type" : list_params[0], "dataset": list_params[1], "dataset_type": list_params[2], "number_of_clients": list_params[3],
-                                    "samples by_client": list_params[4], "num_clusters": list_params[5], "centralized_epochs": list_params[6],
-                                    "federated_rounds": list_params[7],"accuracy": accuracy}
+            dict_exp_results = {"exp_type" : list_params[0], "dataset": list_params[1], "nn_model" : list_params[2], "dataset_type": list_params[3], "number_of_clients": list_params[4],
+                                    "samples by_client": list_params[5], "num_clusters": list_params[6], "centralized_epochs": list_params[7],
+                                    "federated_rounds": list_params[8],"accuracy": accuracy}
 
             try:
                 
