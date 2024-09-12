@@ -28,7 +28,7 @@ def main_driver(exp_type, dataset, nn_model, heterogeneity_type, num_clients, nu
     
 
     output_name =  row_exp.to_string(header=False, index=False, name=False).replace(' ', "").replace('\n','_')
-
+    
     hash_outputname = get_uid(output_name)
 
     pathlist = Path("results").rglob('*.json')
@@ -47,7 +47,6 @@ def main_driver(exp_type, dataset, nn_model, heterogeneity_type, num_clients, nu
     except Exception as e:
 
         print(f"Could not run experiment with parameters {output_name}. Exception {e}")
-
         return 
     
     launch_experiment(model_server, list_clients, row_exp, output_name)
@@ -92,8 +91,6 @@ def launch_experiment(model_server, list_clients, row_exp, output_name, save_res
             df_results.to_csv("results/" + output_name + ".csv")
 
         return
-
-
 
 
 if __name__ == "__main__":

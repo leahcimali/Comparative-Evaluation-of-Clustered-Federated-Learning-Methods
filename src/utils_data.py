@@ -47,31 +47,37 @@ def create_label_dict(dataset : str, nn_model : str) -> dict:
     import numpy as np
     import torchvision
     from extra_keras_datasets import kmnist
-    
+    import torchvision.transforms as transforms
+
+    transform = transforms.Compose(
+    [transforms.ToTensor(),
+     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
     if dataset == "fashion-mnist":
-        fashion_mnist = torchvision.datasets.MNIST("datasets", download=True)
-        (x_train, y_train) = fashion_mnist.data, fashion_mnist.targets
+        fashion_mnist = torchvision.datasets.MNIST("datasets", download=True, transform=transform)
+        (x_data, y_data) = fashion_mnist.data, fashion_mnist.targets
     
         if nn_model == "convolutional":
-            x_train = x_train.unsqueeze(1)
+            x_data = x_data.unsqueeze(1)
 
     elif dataset == 'mnist':
         mnist = torchvision.datasets.MNIST("datasets", download=True)
-        (x_train, y_train) = mnist.data, mnist.targets
+        (x_data, y_data) = mnist.data, mnist.targets
         
         if nn_model == "convolutional":
-            x_train = x_train.unsqueeze(1)
+            x_data = x_data.unsqueeze(1)
 
     elif dataset == "cifar10":
-        cifar10 = torchvision.datasets.CIFAR10("datasets", download=True)
-        (x_train, y_train) = cifar10.data, cifar10.targets
-        x_train = np.transpose(x_train, (0, 3, 1, 2))
-
+        cifar10 = torchvision.datasets.CIFAR10("datasets", download=True, transform=transform)
+        (x_data, y_data) = cifar10.data, cifar10.targets
+        x_data = np.transpose(x_data, (0, 3, 1, 2))
+        
     elif dataset == 'kmnist':
-        (x_train, y_train), _ = kmnist.load_data()
+        kmnist = torchvision.datasets.KMNIST("datasets", download=True, transform=transform)
+        (x_data, y_data)  = kmnist.load_data()
 
         if nn_model == "convolutional":
-            x_train = x_train.unsqueeze(1)
+            x_data = x_data.unsqueeze(1)
     
     else:
         sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'kmnist']")    
@@ -80,8 +86,8 @@ def create_label_dict(dataset : str, nn_model : str) -> dict:
 
     for label in range(10):
        
-        label_indices = np.where(np.array(y_train) == label)[0]   
-        label_samples_x = x_train[label_indices]
+        label_indices = np.where(np.array(y_data) == label)[0]   
+        label_samples_x = x_data[label_indices]
         label_dict[label] = label_samples_x
         
     return label_dict
@@ -138,7 +144,6 @@ def rotate_images(client: Client, rotation: int) -> None:
     """
     
     import numpy as np
-    from math import prod
 
     images = client.data['x']
 
@@ -149,11 +154,8 @@ def rotate_images(client: Client, rotation: int) -> None:
         for img in images:
     
             orig_shape = img.shape             
-            img_flatten = img.flatten()
-
-            rotated_img = np.rot90(img, k=rotation//90)  # Rotate image by specified angle
+            rotated_img = np.rot90(img, k=rotation//90)  # Rotate image by specified angle 
             rotated_img = rotated_img.reshape(*orig_shape)
-
             rotated_images.append(rotated_img)   
     
         client.data['x'] = np.array(rotated_images)
@@ -171,37 +173,36 @@ def data_preparation(client : Client, row_exp : dict) -> None:
         row_exp : The current experiment's global parameters
     """
 
+    def to_device_tensor(data, device, data_dtype):
+    
+        data = torch.tensor(data, dtype=data_dtype)
+        data.to(device)
+        return data
+    
     import torch 
     from sklearn.model_selection import train_test_split
     from torch.utils.data import DataLoader, TensorDataset
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'],stratify=client.data['y'])
+    x_data, x_test, y_data, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'],stratify=client.data['y'])
+    x_train, x_val, y_train, y_val  = train_test_split(x_data, y_data, test_size=0.25, random_state=42) 
 
-    x_train, x_test = x_train/255.0 , x_test/255.0
+    x_train_tensor = to_device_tensor(x_train, device, torch.float32)
+    y_train_tensor = to_device_tensor(y_train, device, torch.long)
 
-    x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
-    x_train_tensor.to(device)
+    x_val_tensor = to_device_tensor(x_val, device, torch.float32)
+    y_val_tensor = to_device_tensor(y_val, device, torch.long)
 
+    x_test_tensor = to_device_tensor(x_test, device, torch.float32)
+    y_test_tensor = to_device_tensor(y_test, device, torch.long)
 
-    y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    y_train_tensor.to(device)
+    train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=128, shuffle=True)
+    validation_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=128, shuffle=True)
+    test_loader = DataLoader( TensorDataset(x_test_tensor, y_test_tensor), batch_size=128, shuffle = True)    
 
-    x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
-    x_test_tensor.to(device)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-    y_test_tensor.to(device)
-
-
-    train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=32)
-    
-    test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=32)    
-
-    setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
-    setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
+    setattr(client, 'data_loader', {'train' : train_loader, 'val' : validation_loader, 'test': test_loader, })
+    setattr(client,'train_test', {'x_train': x_train, 'x_val' : x_val, 'x_test': x_test, 'y_train': y_train,  'y_val': y_val, 'y_test': y_test})
     
     return 
 
@@ -245,7 +246,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
     """
 
-    from src.models import SimpleLinear, SimpleConv
+    from src.models import GenericLinearModel, GenericConvModel
     from src.utils_fed import init_server_cluster
     import torch
     
@@ -257,11 +258,11 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
     if row_exp['nn_model'] == "linear":
         
-        model_server = Server(SimpleLinear(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1])) 
+        model_server = Server(GenericLinearModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1])) 
     
     elif row_exp['nn_model'] == "convolutional": 
         
-        model_server = Server(SimpleConv(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
+        model_server = Server(GenericConvModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
 
     dict_clients = get_clients_data(row_exp['num_clients'],
                                     row_exp['num_samples_by_label'],
@@ -559,24 +560,25 @@ def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     import numpy as np 
 
     x_train = np.concatenate([list_clients[id].train_test['x_train'] for id in range(len(list_clients))],axis = 0)
-    x_test = np.concatenate([list_clients[id].train_test['x_test'] for id in range(len(list_clients))],axis = 0)
-    
     y_train = np.concatenate([list_clients[id].train_test['y_train'] for id in range(len(list_clients))],axis = 0)
-    y_test = np.concatenate([list_clients[id].train_test['y_test'] for id in range(len(list_clients))],axis = 0)
-    
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    
+
+    x_val = np.concatenate([list_clients[id].train_test['x_val'] for id in range(len(list_clients))],axis = 0)
+    y_val = np.concatenate([list_clients[id].train_test['y_val'] for id in range(len(list_clients))],axis = 0)
+    x_val_tensor = torch.tensor(x_val, dtype=torch.float32)
+    y_val_tensor = torch.tensor(y_val, dtype=torch.long)
+
+    x_test = np.concatenate([list_clients[id].train_test['x_test'] for id in range(len(list_clients))],axis = 0)
+    y_test = np.concatenate([list_clients[id].train_test['y_test'] for id in range(len(list_clients))],axis = 0)
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
-    train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=64, shuffle=True)
+    val_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=64, shuffle=True)
+    test_loader = DataLoader(TensorDataset(x_test_tensor, y_test_tensor), batch_size=64, shuffle=True)
     
-    test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=True)
-    
-    return train_loader, test_loader
+    return train_loader, val_loader, test_loader
 
 
 

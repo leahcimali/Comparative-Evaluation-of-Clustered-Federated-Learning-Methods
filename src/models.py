@@ -3,86 +3,89 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class SimpleLinear(nn.Module):
-    """ Fully connected neural network with a single hidden layer of default size 200 and ReLU activations"""
+def accuracy(outputs, labels):
+    _, preds = torch.max(outputs, dim=1)
+    return torch.tensor(torch.sum(preds == labels).item() / len(preds))
+
+
+class ImageClassificationBase(nn.Module):
+    def training_step(self, batch):
+        images, labels = batch 
+        out = self(images)
+        loss = F.cross_entropy(out, labels) # Calculate loss
+        return loss
+    
+    def validation_step(self, batch):
+        images, labels = batch 
+        out = self(images)
+        loss = F.cross_entropy(out, labels)   # Calculate loss
+        acc = accuracy(out, labels)
+        return {'val_loss': loss.detach(), 'val_acc': acc}
+        
+    def validation_epoch_end(self, outputs):
+        batch_losses = [x['val_loss'] for x in outputs]
+        epoch_loss = torch.stack(batch_losses).mean()
+        batch_accs = [x['val_acc'] for x in outputs]
+        epoch_acc = torch.stack(batch_accs).mean()
+        return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
+    
+    def epoch_end(self, epoch, result):
+        print("Epoch [{}], train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
+            epoch, result['train_loss'], result['val_loss'], result['val_acc']))
+        
+
+
+class GenericLinearModel(ImageClassificationBase):
     
     def __init__(self, in_size, n_channels):
         
-        """ Initialization function
-        Arguments:
-            h1: int
-                Desired size of the hidden layer 
-        """
         super().__init__()
-        self.fc1 = nn.Linear(in_size*in_size,200)
-        self.fc2 = nn.Linear(200, 10)
+        
         self.in_size = in_size
 
-    def forward(self, x: torch.Tensor):
+        self.network = nn.Sequential(
+            nn.Linear(in_size*in_size,200),
+            nn.Linear(200, 10))
         
-        """ Forward pass function through the network
+    def forward(self, xb):
+        xb = xb.view(-1, self.in_size * self.in_size)
+        return self.network(xb)
         
-        Arguments:
-            x : torch.Tensor
-                input image of size in_size x in_size
-
-        Returns: 
-            log_softmax probabilities of the output layer
-        """
-        
-        x = x.view(-1, self.in_size * self.in_size)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
     
 
-class SimpleConv(nn.Module):
 
-    """ Convolutional neural network with 3 convolutional layers and one fully connected layer
-    """
-
-    def __init__(self,  in_size, n_channels):
-        """ Initialization function
-        """
-        super(SimpleConv, self).__init__()
-                
-        self.conv1 = nn.Conv2d(n_channels, 16, 3, padding=1)
-        self.conv2 = nn.Conv2d(16, 32, 3,  padding=1)
-        self.conv3 = nn.Conv2d(32, 16, 3,  padding=1)
+class GenericConvModel(ImageClassificationBase):
+    def __init__(self, in_size, n_channels):
+        super().__init__()
         
-        self.img_final_size = int(in_size / 8)
+        self.img_final_size = int(in_size / (2**3))
+
+        self.network = nn.Sequential(
+            nn.Conv2d(n_channels, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2), # output: 64 x 16 x 16
+
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2), # output: 128 x 8 x 8
+
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2), # output: 256 x 4 x 4
+
+            nn.Flatten(), 
+            nn.Linear(256 * self.img_final_size * self.img_final_size, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, 10))
         
-        self.fc1 = nn.Linear(16 * self.img_final_size * self.img_final_size, 10)
-
-        self.pool = nn.MaxPool2d(2, 2)
-
-        self.dropout = nn.Dropout(p=0.2)
-
-    def flatten(self, x : torch.Tensor):
+    def forward(self, xb):
+        return self.network(xb)
     
-        """Function to flatten a layer
-        
-            Arguments: 
-                x : torch.Tensor
-
-            Returns:
-                flattened Tensor
-        """
-    
-        return x.reshape(x.size()[0], -1)
-    
-    def forward(self, x : torch.Tensor):
-        """ Forward pass through the network which returns the softmax probabilities of the output layer
-
-        Arguments:
-            x : torch.Tensor
-                input image to use for training
-        """
-        
-        x = self.dropout(self.pool(F.relu(self.conv1(x))))
-        x = self.dropout(self.pool(F.relu(self.conv2(x))))
-        x = self.dropout(self.pool(F.relu(self.conv3(x))))
-        x = self.flatten(x)
-        x = self.fc1(x)
-
-        return F.log_softmax(x, dim=1)

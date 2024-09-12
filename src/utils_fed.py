@@ -196,7 +196,7 @@ def init_server_cluster(my_server : Server, list_clients : list, row_exp : dict,
         p_expert_opintion : Parameter to avoid completly random assignment if neeed (default to 0)
     """
     
-    from src.models import SimpleLinear
+    from src.models import GenericLinearModel, GenericConvModel
     import numpy as np
     import copy
 
@@ -212,7 +212,7 @@ def init_server_cluster(my_server : Server, list_clients : list, row_exp : dict,
 
     my_server.num_clusters = row_exp['num_clusters']
 
-    my_server.clusters_models = {cluster_id: SimpleLinear(in_size=imgs_params[0], n_channels=imgs_params[1]) for cluster_id in range(row_exp['num_clusters'])}
+    my_server.clusters_models = {cluster_id: GenericConvModel(in_size=imgs_params[0], n_channels=imgs_params[1]) for cluster_id in range(row_exp['num_clusters'])}
     
     
     for client in list_clients:
@@ -291,8 +291,6 @@ def set_client_cluster(my_server : Server, list_clients : list, row_exp : dict) 
         
         index_of_min_loss = np.argmin(cluster_losses)
         
-        #print(f"client {client.id} with heterogeneity {client.heterogeneity_class} cluster losses:", cluster_losses)
-
         client.model = copy.deepcopy(my_server.clusters_models[index_of_min_loss])
     
         client.cluster_id = index_of_min_loss

@@ -10,3 +10,4 @@ backup_results/*
 tests/__pycache__/*
 datasets/*
 pub/*
+data/*
