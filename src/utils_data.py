@@ -46,7 +46,6 @@ def create_label_dict(dataset : str, nn_model : str) -> dict:
     import sys
     import numpy as np
     import torchvision
-    from extra_keras_datasets import kmnist
     import torchvision.transforms as transforms
 
     transform = transforms.Compose(
