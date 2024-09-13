@@ -250,7 +250,9 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     import torch
     
     list_clients = []
-    
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     torch.manual_seed(row_exp['seed'])
 
     imgs_params = {'mnist': (28,1) , 'fashion-mnist': (28,1), 'kmnist': (28,1), 'cifar10': (32,3)}
@@ -262,6 +264,8 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     elif row_exp['nn_model'] == "convolutional": 
         
         model_server = Server(GenericConvModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
+
+    model_server.model.to(device)
 
     dict_clients = get_clients_data(row_exp['num_clients'],
                                     row_exp['num_samples_by_label'],
