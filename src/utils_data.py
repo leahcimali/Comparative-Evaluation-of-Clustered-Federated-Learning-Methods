@@ -3,6 +3,35 @@ from torch.utils.data import DataLoader
 from numpy import ndarray
 from typing import Tuple
 
+
+class AddGaussianNoise(object):
+    
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        import torch
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
+class AddRandomJitter(object):
+
+    def __init__(self, brightness =0.5, contrast = 1, saturation = 0.1, hue = 0.5):
+        self.brightness = brightness,
+        self.contrast = contrast, 
+        self.saturation = saturation, 
+        self.hue = hue
+    
+    def __call__(self, tensor):
+        import torchvision.transforms as transforms
+        transform = transforms.ColorJitter(brightness = self.brightness, contrast= self.contrast, 
+                               saturation = self.saturation, hue = self.hue)
+        return transform(tensor)
+    
+
 def shuffle_list(list_samples : int, seed : int) -> list: 
     
     """Function to shuffle the samples list
@@ -50,7 +79,11 @@ def create_label_dict(dataset : str, nn_model : str) -> dict:
 
     transform = transforms.Compose(
     [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+     AddGaussianNoise(0., 1.),
+     AddRandomJitter()])
+
+    
 
     if dataset == "fashion-mnist":
         fashion_mnist = torchvision.datasets.MNIST("datasets", download=True, transform=transform)
@@ -245,7 +278,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
     """
 
-    from src.models import GenericLinearModel, GenericConvModel
+    from src.models import GenericConvModel
     from src.utils_fed import init_server_cluster
     import torch
     
@@ -259,7 +292,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
     if row_exp['nn_model'] == "linear":
         
-        model_server = Server(GenericLinearModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1])) 
+        model_server = Server(GenericConvModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1])) 
     
     elif row_exp['nn_model'] == "convolutional": 
         

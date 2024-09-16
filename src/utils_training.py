@@ -133,7 +133,7 @@ def run_benchmark(main_model : nn.Module, list_clients : list, row_exp : dict) -
             model_server = copy.deepcopy(curr_model)
             model_trained = train_federated(model_server, list_clients, row_exp, use_cluster_models = False)
 
-            _, test_loader = centralize_data(list_clients)
+            _, _,test_loader = centralize_data(list_clients)
             global_acc = test_model(model_trained.model, test_loader) 
                      
             for client in list_clients : 
@@ -172,7 +172,7 @@ def train_federated(main_model, list_clients, row_exp, use_cluster_models = Fals
             send_cluster_models_to_clients(list_clients, main_model)
 
         for client in list_clients:
-
+            print(f"Training client {client.id} with dataset of size {client.data['x'].shape}")
             client.model, curr_acc = train_central(client.model, client.data_loader['train'], client.data_loader['val'], row_exp)
             accs.append(curr_acc)
 
@@ -208,7 +208,7 @@ def train_central(model : ImageClassificationBase, train_loader : DataLoader, va
     """
 
     opt_func=torch.optim.SGD #if row_exp['nn_model'] == "linear" else torch.optim.Adam
-    lr = 0.001
+    lr = 0.01
     history = []
     optimizer = opt_func(model.parameters(), lr)
     
