@@ -1,4 +1,4 @@
-experiment_1.txt
+*.pyc
 *.py~
 results/*
 .vscode/*
