@@ -12,14 +12,14 @@ def accuracy(outputs, labels):
 class ImageClassificationBase(nn.Module):
     def training_step(self, batch, device):
         images, labels = batch
-        images, labels = images.to(device), labels.to(device) 
+        images, labels = images.to(device), labels.to(device).long() 
         out = self(images)
         loss = F.cross_entropy(out, labels)  
         return loss
     
     def validation_step(self, batch, device):
         images, labels = batch
-        images, labels = images.to(device), labels.to(device)  
+        images, labels = images.to(device), labels.to(device).long()
         out = self(images)
         loss = F.cross_entropy(out, labels) 
         acc = accuracy(out, labels)
