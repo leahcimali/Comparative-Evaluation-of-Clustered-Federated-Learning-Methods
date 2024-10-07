@@ -199,7 +199,7 @@ def init_server_cluster(my_server : Server, list_clients : list, row_exp : dict,
         p_expert_opintion : Parameter to avoid completly random assignment if neeed (default to 0)
     """
     
-    from src.models import GenericLinearModel, GenericConvModel, CovNet
+    from src.models import GenericLinearModel, GenericConvModel
     import numpy as np
     import copy
 

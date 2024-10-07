@@ -53,7 +53,7 @@ def create_label_dict(dataset : str, nn_model : str) -> dict:
         fashion_mnist = torchvision.datasets.MNIST("datasets", download=True)
         (x_data, y_data) = fashion_mnist.data, fashion_mnist.targets
     
-        if nn_model in ["convolutional","CovNet"]:
+        if nn_model in ["convolutional"]:
             x_data = x_data.unsqueeze(1)
 
     elif dataset == 'mnist':
@@ -63,7 +63,7 @@ def create_label_dict(dataset : str, nn_model : str) -> dict:
     elif dataset == "cifar10":
         cifar10 = torchvision.datasets.CIFAR10("datasets", download=True)
         (x_data, y_data) = cifar10.data, cifar10.targets
-        #x_data = np.transpose(x_data, (0, 3, 1, 2))
+        
         
     elif dataset == 'kmnist':
         kmnist = torchvision.datasets.KMNIST("datasets", download=True)
@@ -256,9 +256,9 @@ def data_preparation(client: Client, row_exp: dict) -> None:
     test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
 
     # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    validation_loader = DataLoader(val_dataset, batch_size=64, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    validation_loader = DataLoader(val_dataset, batch_size=128, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True)
 
     # Store DataLoaders in the client object
     setattr(client, 'data_loader', {'train': train_loader, 'val': validation_loader, 'test': test_loader})
@@ -307,7 +307,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
     """
 
-    from src.models import GenericConvModel, CovNet
+    from src.models import GenericConvModel
     from src.utils_fed import init_server_cluster
     import torch
     
@@ -326,8 +326,6 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     elif row_exp['nn_model'] == "convolutional": 
         
         model_server = Server(GenericConvModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
-    elif row_exp['nn_model'] == "CovNet":
-        model_server = Server(CovNet(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
        
 
     model_server.model.to(device)
@@ -613,7 +611,7 @@ def swap_labels(labels : list, client : Client, heterogeneity_class : int) -> Cl
     return client
 
 
-
+'''
 def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     """Centralize data of the federated learning setup for central model comparison
 
@@ -643,11 +641,12 @@ def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
-    train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=64, shuffle=True)
-    val_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=64, shuffle=True)
-    test_loader = DataLoader(TensorDataset(x_test_tensor, y_test_tensor), batch_size=64, shuffle=True)
+    train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=128, shuffle=True)
+    val_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=128, shuffle=False)
+    test_loader = DataLoader(TensorDataset(x_test_tensor, y_test_tensor), batch_size=128, shuffle=False)
     
     return train_loader, val_loader, test_loader
+'''
 
 def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
     """Centralize data of the federated learning setup for central model comparison
@@ -696,9 +695,9 @@ def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
     test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
 
     # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)  # Validation typically not shuffled
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)  # Test data typically not shuffled
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)  # Validation typically not shuffled
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)  # Test data typically not shuffled
 
     return train_loader, val_loader, test_loader
 

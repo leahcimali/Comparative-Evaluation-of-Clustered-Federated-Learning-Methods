@@ -212,7 +212,7 @@ def train_central(model: ImageClassificationBase, train_loader: DataLoader, val_
     # Move the model to the appropriate device
     model.to(device)
 
-    opt_func = torch.optim.Adam  # if row_exp['nn_model'] == "linear" else torch.optim.Adam
+    opt_func = torch.optim.SGD  # if row_exp['nn_model'] == "linear" else torch.optim.Adam
     lr = 0.001
     history = []
     optimizer = opt_func(model.parameters(), lr)
