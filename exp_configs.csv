@@ -1,2 +1,10 @@
 exp_type,dataset,nn_model,heterogeneity_type,num_clients,num_samples_by_label,num_clusters,centralized_epochs,federated_rounds,seed
-server,cifar10,convolutional,concept-shift-on-labels,8,600,6,3,2,42
+pers-centralized,cifar10,convolutional,concept-shift-on-features,48,100,4,200,0,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,50,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,100,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,150,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,200,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,50,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,100,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,150,42
+global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,200,42

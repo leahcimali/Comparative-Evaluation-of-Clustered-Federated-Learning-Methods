@@ -1,18 +1,21 @@
+import os
+
+# Set the environment variable for deterministic behavior with CuBLAS (Give reproductibility with CUDA) 
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 import click
 
 @click.command()
 @click.option('--exp_type', help="The experiment type to run")
-@click.option('--heterogeneity_type', help="The data heterogeneity to test (or dataset)")
 @click.option('--dataset')
 @click.option('--nn_model', help= "The training model to use ('linear (default) or 'convolutional')")
+@click.option('--heterogeneity_type', help="The data heterogeneity to test (or dataset)")
 @click.option('--num_clients', type=int)
 @click.option('--num_samples_by_label', type=int)
 @click.option('--num_clusters', type=int)
 @click.option('--centralized_epochs', type=int)
 @click.option('--federated_rounds', type=int)
 @click.option('--seed', type=int)
-
 
 
 def main_driver(exp_type, dataset, nn_model, heterogeneity_type, num_clients, num_samples_by_label, num_clusters, centralized_epochs, federated_rounds, seed):

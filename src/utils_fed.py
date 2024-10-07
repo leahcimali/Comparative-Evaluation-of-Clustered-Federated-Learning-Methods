@@ -1,7 +1,10 @@
 from src.fedclass import Server
+import torch
 import torch.nn as nn
 import pandas as pd
 from torch.utils.data import DataLoader
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def send_server_model_to_client(list_clients : list, my_server : Server) -> None:
     
@@ -120,12 +123,12 @@ def model_weight_matrix(list_clients : list) -> pd.DataFrame:
 
     model_dict = {client.id : client.model for client in list_clients}
 
-    shapes = [param.data.numpy().shape for param in next(iter(model_dict.values())).parameters()]
+    shapes = [param.data.cpu().numpy().shape for param in next(iter(model_dict.values())).parameters()]
     weight_matrix_np = np.empty((len(model_dict), sum(np.prod(shape) for shape in shapes)))
 
     for idx, (_, model) in enumerate(model_dict.items()):
 
-        model_weights = np.concatenate([param.data.numpy().flatten() for param in model.parameters()])
+        model_weights = np.concatenate([param.data.cpu().numpy().flatten() for param in model.parameters()])
         weight_matrix_np[idx, :] = model_weights
 
     weight_matrix = pd.DataFrame(weight_matrix_np, columns=[f'w_{i+1}' for i in range(weight_matrix_np.shape[1])])
@@ -196,7 +199,7 @@ def init_server_cluster(my_server : Server, list_clients : list, row_exp : dict,
         p_expert_opintion : Parameter to avoid completly random assignment if neeed (default to 0)
     """
     
-    from src.models import GenericConvModel
+    from src.models import GenericLinearModel, GenericConvModel, CovNet
     import numpy as np
     import copy
 
@@ -211,9 +214,7 @@ def init_server_cluster(my_server : Server, list_clients : list, row_exp : dict,
     p_rest = (1 - p_expert_opinion) / (row_exp['num_clusters'] - 1)
 
     my_server.num_clusters = row_exp['num_clusters']
-
     my_server.clusters_models = {cluster_id: GenericConvModel(in_size=imgs_params[0], n_channels=imgs_params[1]) for cluster_id in range(row_exp['num_clusters'])}
-    
     
     for client in list_clients:
     
@@ -241,7 +242,8 @@ def loss_calculation(model : nn.modules, train_loader : DataLoader) -> float:
     import torch.nn as nn
 
     criterion = nn.CrossEntropyLoss()  
-
+    
+    model.to(device)
     model.eval()
 
     total_loss = 0.0

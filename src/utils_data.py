@@ -3,35 +3,6 @@ from torch.utils.data import DataLoader
 from numpy import ndarray
 from typing import Tuple
 
-
-class AddGaussianNoise(object):
-    
-    def __init__(self, mean=0., std=1.):
-        self.std = std
-        self.mean = mean
-        
-    def __call__(self, tensor):
-        import torch
-        return tensor + torch.randn(tensor.size()) * self.std + self.mean
-    
-    def __repr__(self):
-        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
-
-class AddRandomJitter(object):
-
-    def __init__(self, brightness =0.5, contrast = 1, saturation = 0.1, hue = 0.5):
-        self.brightness = brightness,
-        self.contrast = contrast, 
-        self.saturation = saturation, 
-        self.hue = hue
-    
-    def __call__(self, tensor):
-        import torchvision.transforms as transforms
-        transform = transforms.ColorJitter(brightness = self.brightness, contrast= self.contrast, 
-                               saturation = self.saturation, hue = self.hue)
-        return transform(tensor)
-    
-
 def shuffle_list(list_samples : int, seed : int) -> list: 
     
     """Function to shuffle the samples list
@@ -75,42 +46,28 @@ def create_label_dict(dataset : str, nn_model : str) -> dict:
     import sys
     import numpy as np
     import torchvision
+   
     import torchvision.transforms as transforms
 
-    transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-     AddGaussianNoise(0., 1.),
-     AddRandomJitter()])
-
-    
-
     if dataset == "fashion-mnist":
-        fashion_mnist = torchvision.datasets.MNIST("datasets", download=True, transform=transform)
+        fashion_mnist = torchvision.datasets.MNIST("datasets", download=True)
         (x_data, y_data) = fashion_mnist.data, fashion_mnist.targets
     
-        if nn_model == "convolutional":
+        if nn_model in ["convolutional","CovNet"]:
             x_data = x_data.unsqueeze(1)
 
     elif dataset == 'mnist':
         mnist = torchvision.datasets.MNIST("datasets", download=True)
         (x_data, y_data) = mnist.data, mnist.targets
-        
-        if nn_model == "convolutional":
-            x_data = x_data.unsqueeze(1)
-
+    
     elif dataset == "cifar10":
-        cifar10 = torchvision.datasets.CIFAR10("datasets", download=True, transform=transform)
+        cifar10 = torchvision.datasets.CIFAR10("datasets", download=True)
         (x_data, y_data) = cifar10.data, cifar10.targets
-        x_data = np.transpose(x_data, (0, 3, 1, 2))
+        #x_data = np.transpose(x_data, (0, 3, 1, 2))
         
     elif dataset == 'kmnist':
-        kmnist = torchvision.datasets.KMNIST("datasets", download=True, transform=transform)
-        (x_data, y_data)  = kmnist.load_data()
-
-        if nn_model == "convolutional":
-            x_data = x_data.unsqueeze(1)
-    
+        kmnist = torchvision.datasets.KMNIST("datasets", download=True)
+        (x_data, y_data)  = kmnist.load_data()    
     else:
         sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'kmnist']")    
 
@@ -194,10 +151,67 @@ def rotate_images(client: Client, rotation: int) -> None:
 
     return
 
+import torch 
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset, Dataset
+import torchvision.transforms as transforms
 
 
-def data_preparation(client : Client, row_exp : dict) -> None:
+class AddGaussianNoise(object):
     
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        import torch
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
+class AddRandomJitter(object):
+
+    def __init__(self, brightness =0.5, contrast = 1, saturation = 0.1, hue = 0.5):
+        self.brightness = brightness,
+        self.contrast = contrast, 
+        self.saturation = saturation, 
+        self.hue = hue
+    
+    def __call__(self, tensor):
+        import torchvision.transforms as transforms
+        transform = transforms.ColorJitter(brightness = self.brightness, contrast= self.contrast, 
+                               saturation = self.saturation, hue = self.hue)
+        return transform(tensor)
+
+class CustomDataset(Dataset):
+    
+    def __init__(self, data, labels, transform=None):
+        # Ensure data is in (N, H, W, C) format
+        self.data = data  # Assume data is in (N, H, W, C) format
+        self.labels = labels
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        image = self.data[idx]  # Shape (H, W, C)
+        label = self.labels[idx]
+
+        # Convert image to tensor and permute to (C, H, W)
+        image = torch.tensor(image, dtype=torch.float)  # Convert to tensor
+        image = image.permute(2, 0, 1)  # Change to (C, H, W)
+
+        # Apply transformation if provided
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+
+
+def data_preparation(client: Client, row_exp: dict) -> None:
     """Saves Dataloaders of train and test data in the Client attributes 
     
     Arguments:
@@ -206,37 +220,52 @@ def data_preparation(client : Client, row_exp : dict) -> None:
     """
 
     def to_device_tensor(data, device, data_dtype):
-    
         data = torch.tensor(data, dtype=data_dtype)
-        data.to(device)
+        data = data.to(device)
         return data
     
     import torch 
     from sklearn.model_selection import train_test_split
-    from torch.utils.data import DataLoader, TensorDataset
+    from torch.utils.data import DataLoader, TensorDataset, Dataset
+    import torchvision.transforms as transforms
+    import numpy as np  # Import NumPy for transpose operation
+    
+    # Define data augmentation transforms
+    train_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        AddGaussianNoise(0., 1.),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize if needed
+    ])
+    
+    # Transform for validation and test data (no augmentation, just normalization)
+    test_val_transform = transforms.Compose([
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize if needed
+    ])
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    x_data, x_test, y_data, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'],stratify=client.data['y'])
-    x_train, x_val, y_train, y_val  = train_test_split(x_data, y_data, test_size=0.25, random_state=42) 
+    # Split into train, validation, and test sets
+    x_data, x_test, y_data, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'], stratify=client.data['y'])
+    x_train, x_val, y_train, y_val  = train_test_split(x_data, y_data, test_size=0.25, random_state=42)
 
-    x_train_tensor = to_device_tensor(x_train, device, torch.float32)
-    y_train_tensor = to_device_tensor(y_train, device, torch.long)
 
-    x_val_tensor = to_device_tensor(x_val, device, torch.float32)
-    y_val_tensor = to_device_tensor(y_val, device, torch.long)
+    # Create datasets with transformations
+    train_dataset = CustomDataset(x_train, y_train, transform=train_transform)
+    val_dataset = CustomDataset(x_val, y_val, transform=test_val_transform)
+    test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
 
-    x_test_tensor = to_device_tensor(x_test, device, torch.float32)
-    y_test_tensor = to_device_tensor(y_test, device, torch.long)
+    # Create DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    validation_loader = DataLoader(val_dataset, batch_size=64, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=True)
 
-    train_loader = DataLoader(TensorDataset(x_train_tensor, y_train_tensor), batch_size=128, shuffle=True)
-    validation_loader = DataLoader(TensorDataset(x_val_tensor, y_val_tensor), batch_size=128, shuffle=True)
-    test_loader = DataLoader( TensorDataset(x_test_tensor, y_test_tensor), batch_size=128, shuffle = True)    
+    # Store DataLoaders in the client object
+    setattr(client, 'data_loader', {'train': train_loader, 'val': validation_loader, 'test': test_loader})
+    setattr(client, 'train_test', {'x_train': x_train, 'x_val': x_val, 'x_test': x_test, 'y_train': y_train, 'y_val': y_val, 'y_test': y_test})
 
-    setattr(client, 'data_loader', {'train' : train_loader, 'val' : validation_loader, 'test': test_loader, })
-    setattr(client,'train_test', {'x_train': x_train, 'x_val' : x_val, 'x_test': x_test, 'y_train': y_train,  'y_val': y_val, 'y_test': y_test})
-    
-    return 
+    return
+
 
 
 def get_dataset_heterogeneities(heterogeneity_type: str) -> dict:
@@ -278,7 +307,7 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
 
     """
 
-    from src.models import GenericConvModel
+    from src.models import GenericConvModel, CovNet
     from src.utils_fed import init_server_cluster
     import torch
     
@@ -297,6 +326,9 @@ def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
     elif row_exp['nn_model'] == "convolutional": 
         
         model_server = Server(GenericConvModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
+    elif row_exp['nn_model'] == "CovNet":
+        model_server = Server(CovNet(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
+       
 
     model_server.model.to(device)
 
@@ -594,7 +626,8 @@ def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     import torch 
     from torch.utils.data import DataLoader,TensorDataset
     import numpy as np 
-
+    
+    
     x_train = np.concatenate([list_clients[id].train_test['x_train'] for id in range(len(list_clients))],axis = 0)
     y_train = np.concatenate([list_clients[id].train_test['y_train'] for id in range(len(list_clients))],axis = 0)
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
@@ -616,6 +649,58 @@ def centralize_data(list_clients : list) -> Tuple[DataLoader, DataLoader]:
     
     return train_loader, val_loader, test_loader
 
+def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
+    """Centralize data of the federated learning setup for central model comparison
+
+    Arguments:
+        list_clients : The list of Client Objects
+
+    Returns:
+        Train and test torch DataLoaders with data of all Clients
+    """
+    
+    from torchvision import transforms
+    import torch 
+    from torch.utils.data import DataLoader,TensorDataset
+    import numpy as np 
+
+    train_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        AddGaussianNoise(0., 1.),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize if needed
+    ])
+    
+    # Transform for validation and test data (no augmentation, just normalization)
+    test_val_transform = transforms.Compose([
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize if needed
+    ])
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # Concatenate training data from all clients
+    x_train = np.concatenate([list_clients[id].train_test['x_train'] for id in range(len(list_clients))], axis=0)
+    y_train = np.concatenate([list_clients[id].train_test['y_train'] for id in range(len(list_clients))], axis=0)
+
+    # Concatenate validation data from all clients
+    x_val = np.concatenate([list_clients[id].train_test['x_val'] for id in range(len(list_clients))], axis=0)
+    y_val = np.concatenate([list_clients[id].train_test['y_val'] for id in range(len(list_clients))], axis=0)
+
+    # Concatenate test data from all clients
+    x_test = np.concatenate([list_clients[id].train_test['x_test'] for id in range(len(list_clients))], axis=0)
+    y_test = np.concatenate([list_clients[id].train_test['y_test'] for id in range(len(list_clients))], axis=0)
+
+    # Create Custom Datasets
+    train_dataset = CustomDataset(x_train, y_train, transform=train_transform)
+    val_dataset = CustomDataset(x_val, y_val, transform=test_val_transform)
+    test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
+
+    # Create DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)  # Validation typically not shuffled
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)  # Test data typically not shuffled
+
+    return train_loader, val_loader, test_loader
 
 
 
