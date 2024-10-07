@@ -252,7 +252,7 @@ def loss_calculation(model : nn.modules, train_loader : DataLoader) -> float:
     with torch.no_grad():
 
         for inputs, targets in train_loader:
-
+            inputs, targets = inputs.to(device), targets.to(device).long()
             outputs = model(inputs)
 
             loss = criterion(outputs, targets)
