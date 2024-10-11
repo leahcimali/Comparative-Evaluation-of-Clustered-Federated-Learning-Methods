@@ -518,9 +518,8 @@ def apply_quantity_skew(list_clients : list, row_exp : dict, list_skews : list) 
     dict_clients = [get_clients_data(n_clients_by_skew,
                                     int(n_max_samples * skew),
                                     row_exp['dataset'],
-                                    seed=row_exp['seed']) 
+                                    row_exp['nn_model']) 
                                     for skew in list_skews] 
-           
     list_clients = []
 
     for c in range(n_clients_by_skew):
