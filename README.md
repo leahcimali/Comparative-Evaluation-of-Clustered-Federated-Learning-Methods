@@ -15,6 +15,3 @@ To use driver.py use the following parameters :
 To run all experiments in exp_config.csv user `run_exp.py`. 
 
 Once all experiments are done, to get results run `src/utils_results.src`.
-
-
-  

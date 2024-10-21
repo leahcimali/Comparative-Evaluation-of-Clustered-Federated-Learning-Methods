@@ -1,146 +1,284 @@
-import torch
-import numpy as np
-
-from collections import Counter
-import pandas as pd
-import numpy as np
-
 from src.fedclass import Client, Server
+from torch.utils.data import DataLoader
+from numpy import ndarray
+from typing import Tuple
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def shuffle_list(list_samples : int, seed : int) -> list: 
+    
+    """Function to shuffle the samples list
 
-def shuffle(array,seed=42): 
-    # Function to shuffle the samples 
-    # Generate a list of shuffled indices
+    Arguments:
+        list_samples : A list of samples to shuffle
+        seed : Randomization seed for reproducible results
+    
+    Returns:
+        The shuffled list of samples 
+    """
+
+    import numpy as np
 
     np.random.seed(seed)
 
-    shuffled_indices = np.arange(array.shape[0])
+    shuffled_indices = np.arange(list_samples.shape[0])
+
     np.random.shuffle(shuffled_indices)
 
-    # Use the shuffled indices to reorder the array along the first axis
-    shuffled_arr = array[shuffled_indices].copy()
-    return shuffled_arr
+    shuffled_list = list_samples[shuffled_indices].copy()
+    
+    return shuffled_list
 
-def create_label_dict(dataset, seed = 42) :
+
+def create_label_dict(dataset : str, nn_model : str) -> dict:
+    
+    """Create a dictionary of dataset samples
+
+    Arguments:
+        dataset : The name of the dataset to use (e.g 'fashion-mnist', 'mnist', or 'cifar10')
+        nn_model : the training model type ('linear' or 'convolutional') 
+
+    Returns:
+        label_dict : A dictionary of data of the form {'x': [], 'y': []}
+
+    Raises:
+        Error : if the dataset name is unrecognized
     """
-    Create a dictionary of dataset samples by labels 
-    """
+    
     import sys
-    from tensorflow.keras.datasets import mnist, fashion_mnist
-    from extra_keras_datasets import kmnist
+    import numpy as np
+    import torchvision
+   
+    import torchvision.transforms as transforms
 
     if dataset == "fashion-mnist":
-        (x_train, y_train), _ = fashion_mnist.load_data()
+        fashion_mnist = torchvision.datasets.MNIST("datasets", download=True)
+        (x_data, y_data) = fashion_mnist.data, fashion_mnist.targets
+    
+        if nn_model in ["convolutional"]:
+            x_data = x_data.unsqueeze(1)
+
     elif dataset == 'mnist':
-        (x_train, y_train), _ = mnist.load_data()
+        mnist = torchvision.datasets.MNIST("datasets", download=True)
+        (x_data, y_data) = mnist.data, mnist.targets
+    
+    elif dataset == "cifar10":
+        cifar10 = torchvision.datasets.CIFAR10("datasets", download=True)
+        (x_data, y_data) = cifar10.data, cifar10.targets
+        
+        
     elif dataset == 'kmnist':
-        (x_train, y_train), _ = kmnist.load_data()
+        kmnist = torchvision.datasets.KMNIST("datasets", download=True)
+        (x_data, y_data)  = kmnist.load_data()    
     else:
         sys.exit("Unrecognized dataset. Please make sure you are using one of the following ['mnist', fashion-mnist', 'kmnist']")    
 
-    
     label_dict = {}
+
     for label in range(10):
        
-        label_indices = np.where(y_train == label)[0]
-       
-        label_samples_x = x_train[label_indices]
-          
-        label_dict[label] = shuffle(label_samples_x, seed)
+        label_indices = np.where(np.array(y_data) == label)[0]   
+        label_samples_x = x_data[label_indices]
+        label_dict[label] = label_samples_x
         
     return label_dict
 
 
+def get_clients_data(num_clients : int, num_samples_by_label : int, dataset : str, nn_model : str) -> dict:
+    
+    """Distribute a dataset evenly accross num_clients clients. Works with datasets with 10 labels
+    
+    Arguments:
+        num_clients : Number of clients of interest
+        num_samples_by_label : Number of samples of each labels by client
+        dataset: The name of the dataset to use (e.g 'fashion-mnist', 'mnist', or 'cifar10')
+        nn_model : the training model type ('linear' or 'convolutional')
 
-def get_clients_data(num_clients, num_samples_by_label, dataset, seed = 42):
-    """
-    Distribute Dataset evenly accross num_clients clients
-    ----------
-    num_clients : int
-        number of client of interest
-        
-    num_samples_by_label : int
-        number of samples of each labels by clients
-    Returns
-    -------
-    client_dataset : Dictionnary
-        Dictionnary where each key correspond to a client index. The samples will be contained in the 'x' key and the target in 'y' key
+    Returns:
+        client_dataset :  Dictionnary where each key correspond to a client index. The samples will be contained in the 'x' key and the target in 'y' key
     """
     
-    label_dict = create_label_dict(dataset, seed)
-    # Initialize dictionary to store client data
+    import numpy as np 
+
+    label_dict = create_label_dict(dataset, nn_model)
+
     clients_dictionary = {}
     client_dataset = {}
+
     for client in range(num_clients):
+        
         clients_dictionary[client] = {}    
+        
         for label in range(10):
+        
             clients_dictionary[client][label]= label_dict[label][client*num_samples_by_label:(client+1)*num_samples_by_label]
+    
     for client in range(num_clients):
+    
         client_dataset[client] = {}    
+    
         client_dataset[client]['x'] = np.concatenate([clients_dictionary[client][label] for label in range(10)], axis=0)
+    
         client_dataset[client]['y'] = np.concatenate([[label]*len(clients_dictionary[client][label]) for label in range(10)], axis=0)
+    
     return client_dataset
 
-def rotate_images(client, rotation):
-    # Rotate images, used of concept shift on features
-    images = client.data['x']
+
+
+def rotate_images(client: Client, rotation: int) -> None:
     
-    if rotation >0 :
+    """ Rotate a Client's images, used for ``concept shift on features''
+    
+    Arguments:
+        client : A Client object whose dataset images we want to rotate
+        rotation : the rotation angle to apply  0 < angle < 360
+    """
+    
+    import numpy as np
+
+    images = client.data['x']
+
+    if rotation > 0 :
+
         rotated_images = []
+    
         for img in images:
-            rotated_img = np.rot90(img, k=rotation//90)  # Rotate image by specified angle
+    
+            orig_shape = img.shape             
+            rotated_img = np.rot90(img, k=rotation//90)  # Rotate image by specified angle 
+            rotated_img = rotated_img.reshape(*orig_shape)
             rotated_images.append(rotated_img)   
+    
         client.data['x'] = np.array(rotated_images)
 
-def data_preparation(client, row_exp):
-    """
-    Train test split of a client's data and create onf dataloaders for local model training
+    return
+
+import torch 
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset, Dataset
+import torchvision.transforms as transforms
+
+
+class AddGaussianNoise(object):
+    
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        import torch
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
+class AddRandomJitter(object):
+
+    def __init__(self, brightness =0.5, contrast = 1, saturation = 0.1, hue = 0.5):
+        self.brightness = brightness,
+        self.contrast = contrast, 
+        self.saturation = saturation, 
+        self.hue = hue
+    
+    def __call__(self, tensor):
+        import torchvision.transforms as transforms
+        transform = transforms.ColorJitter(brightness = self.brightness, contrast= self.contrast, 
+                               saturation = self.saturation, hue = self.hue)
+        return transform(tensor)
+
+class CustomDataset(Dataset):
+    
+    def __init__(self, data, labels, transform=None):
+        # Ensure data is in (N, H, W, C) format
+        self.data = data  # Assume data is in (N, H, W, C) format
+        self.labels = labels
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        image = self.data[idx]  # Shape (H, W, C)
+        label = self.labels[idx]
+
+        # Convert image to tensor and permute to (C, H, W)
+        image = torch.tensor(image, dtype=torch.float)  # Convert to tensor
+        image = image.permute(2, 0, 1)  # Change to (C, H, W)
+
+        # Apply transformation if provided
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+def data_preparation(client: Client, row_exp: dict) -> None:
+    """Saves Dataloaders of train and test data in the Client attributes 
+    
+    Arguments:
+        client : The client object to modify
+        row_exp : The current experiment's global parameters
     """
 
+    def to_device_tensor(data, device, data_dtype):
+        data = torch.tensor(data, dtype=data_dtype)
+        data = data.to(device)
+        return data
+    
+    import torch 
     from sklearn.model_selection import train_test_split
-    from torch.utils.data import DataLoader, TensorDataset
-
-    x_train, x_test, y_train, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'],stratify=client.data['y'])
-
-    x_train, x_test = x_train/255.0 , x_test/255.0
-
-    x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
-    x_train_tensor.to(device)
-
-
-    y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    y_train_tensor.to(device)
-
-    x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
-    x_test_tensor.to(device)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-    y_test_tensor.to(device)
-
-
-    train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    from torch.utils.data import DataLoader, TensorDataset, Dataset
+    import torchvision.transforms as transforms
+    import numpy as np  # Import NumPy for transpose operation
     
-    test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=32)    
+    # Define data augmentation transforms
 
-    setattr(client, 'data_loader', {'train' : train_loader,'test': test_loader})
-    setattr(client,'train_test', {'x_train': x_train,'x_test': x_test, 'y_train': y_train, 'y_test': y_test})
+    train_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(20),  # Normalize if needed
+        transforms.RandomCrop(32, padding=4),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
     
+    # Transform for validation and test data (no augmentation, just normalization)
+    test_val_transform = transforms.Compose([
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize if needed
+    ])
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # Split into train, validation, and test sets
+    x_data, x_test, y_data, y_test = train_test_split(client.data['x'], client.data['y'], test_size=0.3, random_state=row_exp['seed'], stratify=client.data['y'])
+    x_train, x_val, y_train, y_val  = train_test_split(x_data, y_data, test_size=0.25, random_state=42)
 
 
-def get_dataset_heterogeneities(heterogeneity_type):
+    # Create datasets with transformations
+    train_dataset = CustomDataset(x_train, y_train, transform=train_transform)
+    val_dataset = CustomDataset(x_val, y_val, transform=test_val_transform)
+    test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
 
+    # Create DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    validation_loader = DataLoader(val_dataset, batch_size=128, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True)
+
+    # Store DataLoaders in the client object
+    setattr(client, 'data_loader', {'train': train_loader, 'val': validation_loader, 'test': test_loader})
+    setattr(client, 'train_test', {'x_train': x_train, 'x_val': x_val, 'x_test': x_test, 'y_train': y_train, 'y_val': y_val, 'y_test': y_test})
+
+    return
+
+
+
+def get_dataset_heterogeneities(heterogeneity_type: str) -> dict:
+
+    """
+    Retrieves the "skew" and "ratio" attributes of a given heterogeneity type
+
+    Arguments:
+        heterogeneity_type : The label of the heterogeneity scenario (labels-distribution-skew, concept-shift-on-labels, quantity-skew)
+    Returns:
+        dict_params: A dictionary of the form {<het>: []} where <het> is the applicable heterogeneity type 
+    """
     dict_params = {}
 
-    #if heterogeneity_type == "labels-distribution-skew":
-    #    dict_params['skews'] = [[1,2],[3,4],[5,6],[7,8]]
-    #    dict_params['ratios'] = [[0.2,0.2],[0.2,0.2],[0.2,0.2],[0.2,0.2]]
-
-    #elif heterogeneity_type  == "labels-distribution-skew-balancing":
-    #    dict_params['skews'] = [[0,1,2,3,4],[5,6,7,8,9],[0,2,4,6,8],[1,3,5,7,9]]
-    #    dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1],[0.1,0.1,0.1,0.1,0.1]]
-        
     if heterogeneity_type == 'labels-distribution-skew':
         dict_params['skews'] = [[0,3,4,5,6,7,8,9], [0,1,2,5,6,7,8,9], [0,1,2,3,4,7,8,9], [0,1,2,3,4,5,6,9]]
         dict_params['ratios'] = [[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1], [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1],
@@ -153,31 +291,73 @@ def get_dataset_heterogeneities(heterogeneity_type):
         dict_params['skews'] = [0.1,0.2,0.6,1]
 
     return dict_params
+    
+
+def setup_experiment(row_exp: dict) -> Tuple[Server, list]:
+
+    """ Setup function to create and personalize client's data 
+
+    Arguments:
+        row_exp : The current experiment's global parameters
 
 
-def setup_experiment(row_exp):
+    Returns: 
+        model_server, list_clients: a nn model used the server in the FL protocol, a list of Client Objects used as nodes in the FL protocol
 
-    from src.models import SimpleLinear
+    """
+
+    from src.models import GenericConvModel
+    from src.utils_fed import init_server_cluster
+    import torch
     
     list_clients = []
-    model_server = Server(SimpleLinear())
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    torch.manual_seed(row_exp['seed'])
+
+    imgs_params = {'mnist': (28,1) , 'fashion-mnist': (28,1), 'kmnist': (28,1), 'cifar10': (32,3)}
+
+    if row_exp['nn_model'] == "linear":
+        
+        model_server = Server(GenericConvModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1])) 
+    
+    elif row_exp['nn_model'] == "convolutional": 
+        
+        model_server = Server(GenericConvModel(in_size=imgs_params[row_exp['dataset']][0], n_channels=imgs_params[row_exp['dataset']][1]))
+       
+
+    model_server.model.to(device)
 
     dict_clients = get_clients_data(row_exp['num_clients'],
                                     row_exp['num_samples_by_label'],
                                     row_exp['dataset'],
-                                    row_exp['seed'])    
+                                    row_exp['nn_model'])    
     
     for i in range(row_exp['num_clients']):
+
         list_clients.append(Client(i, dict_clients[i]))
 
     list_clients = add_clients_heterogeneity(list_clients, row_exp)
-   
+    
+    if row_exp['exp_type'] == "client":
+
+        init_server_cluster(model_server, list_clients, row_exp, imgs_params[row_exp['dataset']])
+
     return model_server, list_clients
 
 
 
-def add_clients_heterogeneity(list_clients, row_exp):
+def add_clients_heterogeneity(list_clients: list, row_exp: dict) -> list:
+    """ Utility function to apply the relevant heterogeneity classes to each client
     
+    Arguments:
+        list_clients : List of Client Objects with specific heterogeneity_class 
+        row_exp : The current experiment's global parameters
+    Returns:
+        The updated list of clients
+    """
+
     dict_params = get_dataset_heterogeneities(row_exp['heterogeneity_type'])
 
     if row_exp['heterogeneity_type']  == "concept-shift-on-features": # rotations
@@ -200,9 +380,20 @@ def add_clients_heterogeneity(list_clients, row_exp):
 
 
 
-def apply_label_swap(list_clients, row_exp, list_swaps):
-   
+def apply_label_swap(list_clients : list, row_exp : dict, list_swaps : list) -> list:
+    
+    """ Utility function to apply label swaps on Client images
+
+    Arguments:
+        list_clients : List of Client Objects with specific heterogeneity_class 
+        row_exp : The current experiment's global parameters
+        list_swap : List containing the labels to swap by heterogeneity class
+    Returns :
+        Updated list of clients
+    
+    """
     n_swaps_types = len(list_swaps)
+    
     n_clients_by_swaps_type = row_exp['num_clients'] // n_swaps_types
     
     for i in range(n_swaps_types):
@@ -215,6 +406,7 @@ def apply_label_swap(list_clients, row_exp, list_swaps):
         for client in list_clients_swapped:
             
             client = swap_labels(list_swaps[i],client, str(i))
+            
             data_preparation(client, row_exp)
 
         list_clients[start_index:end_index] = list_clients_swapped
@@ -226,9 +418,18 @@ def apply_label_swap(list_clients, row_exp, list_swaps):
 
 
 
-def apply_rotation(list_clients, row_exp):
+def apply_rotation(list_clients : list, row_exp : dict) -> list:
 
-    # Apply rotation 0,90,180 and 270 to 1/4 of clients each
+    """ Utility function to apply rotation 0,90,180 and 270 to 1/4 of Clients 
+
+    Arguments:
+        list_clients : List of Client Objects with specific heterogeneity_class 
+        row_exp : The current experiment's global parameters
+    
+    Returns:
+        Updated list of clients
+    """
+    
     n_rotation_types = 4
     n_clients_by_rotation_type = row_exp['num_clients'] // n_rotation_types #TODO check edge cases where n_clients < n_rotation_types
 
@@ -252,11 +453,22 @@ def apply_rotation(list_clients, row_exp):
         list_clients[start_index:end_index] = list_clients_rotated
 
     list_clients  = list_clients[:end_index]
+
     return list_clients
 
 
-def apply_labels_skew(list_clients, row_exp, list_skews, list_ratios):
+def apply_labels_skew(list_clients : list, row_exp : dict, list_skews : list, list_ratios : list) -> list:
     
+    """ Utility function to apply label skew to Clients' data 
+
+    Arguments:
+        list_clients : List of Client Objects with specific heterogeneity_class 
+        row_exp : The current experiment's global parameters
+    
+    Returns:
+        Updated list of clients
+    """
+
     n_skews = len(list_skews)
     n_clients_by_skew = row_exp['num_clients'] // n_skews 
 
@@ -283,10 +495,20 @@ def apply_labels_skew(list_clients, row_exp, list_skews, list_ratios):
 
 
 
-def apply_quantity_skew(list_clients, row_exp, list_skews):
+def apply_quantity_skew(list_clients : list, row_exp : dict, list_skews : list) -> list:
     
-    # Setup server and clients for quantity skew experiment
-    # Skew list create for each element an equal subset of clients with the corresponding percentage of the client data
+    """ Utility function to apply quantity skew to Clients' data 
+     For each element in list_skews, apply the skew to an equal subset of Clients 
+
+
+    Arguments:
+        list_clients : List of Client Objects with specific heterogeneity_class 
+        row_exp : The current experiment's global parameters
+        list_skew : List of float 0 < i < 1  with quantity skews to subsample data
+    
+    Returns:
+        Updated list of clients
+    """
     
     n_max_samples = 100 # TODO: parameterize by dataset
 
@@ -296,9 +518,8 @@ def apply_quantity_skew(list_clients, row_exp, list_skews):
     dict_clients = [get_clients_data(n_clients_by_skew,
                                     int(n_max_samples * skew),
                                     row_exp['dataset'],
-                                    seed=row_exp['seed']) 
+                                    row_exp['nn_model']) 
                                     for skew in list_skews] 
-           
     list_clients = []
 
     for c in range(n_clients_by_skew):
@@ -313,15 +534,24 @@ def apply_quantity_skew(list_clients, row_exp, list_skews):
 
         data_preparation(client, row_exp)
 
-    
     return list_clients
 
 
 
-def apply_features_skew(list_clients, row_exp) :
-    # Setup server and clients for features distribution skew experiments
+def apply_features_skew(list_clients : list, row_exp : dict) -> list :
     
-    n_skew_types = 3
+    """ Utility function to apply features skew to Clients' data 
+
+    Arguments:
+        list_clients : List of Client Objects with specific heterogeneity_class 
+        row_exp : The current experiment's global parameters
+    
+    Returns:
+        Updated list of clients
+    """
+    
+    n_skew_types = 3 #TODO parameterize
+    
     n_clients_by_skew = row_exp['num_clients'] // n_skew_types  
     
     for i in range(n_skew_types):
@@ -353,106 +583,184 @@ def apply_features_skew(list_clients, row_exp) :
 
 
 
-def swap_labels(labels, client, heterogeneity_class):
+def swap_labels(labels : list, client : Client, heterogeneity_class : int) -> Client:
 
-    # Function for label swapping use for concept shift on labels
-    # labels : tuple of labels to swap
+    """ Utility Function for label swapping used for concept shift on labels. Sets the attribute "heterogeneity class"
+    
+    Arguments:
+        labels : Labels to swap
+        client : The Client object whose data we want to apply the swap on
+    Returns:
+        Client with labels swapped
+    """
+
     newlabellist = client.data['y'] 
+
     otherlabelindex = newlabellist==labels[1]
+
     newlabellist[newlabellist==labels[0]]=labels[1]
+
     newlabellist[otherlabelindex] = labels[0]
+
     client.data['y']= newlabellist
+
     setattr(client,'heterogeneity_class', heterogeneity_class)
+
     return client
 
-def centralize_data(clientlist):
-    # Centralize data of the federated learning setup for central model comparison
+
+def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
+    """Centralize data of the federated learning setup for central model comparison
+
+    Arguments:
+        list_clients : The list of Client Objects
+
+    Returns:
+        Train and test torch DataLoaders with data of all Clients
+    """
+    
+    from torchvision import transforms
+    import torch 
     from torch.utils.data import DataLoader,TensorDataset
-    x_train = np.concatenate([clientlist[id].train_test['x_train'] for id in range(len(clientlist))],axis = 0)
-    x_test = np.concatenate([clientlist[id].train_test['x_test'] for id in range(len(clientlist))],axis = 0)
-    y_train = np.concatenate([clientlist[id].train_test['y_train'] for id in range(len(clientlist))],axis = 0)
-    y_test = np.concatenate([clientlist[id].train_test['y_test'] for id in range(len(clientlist))],axis = 0)
-    x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
-    y_train_tensor = torch.tensor(y_train, dtype=torch.long)
-    x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
-    train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
-    test_loader = DataLoader(test_dataset, batch_size=64)
-    return train_loader, test_loader
+    import numpy as np 
+
+    train_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(20),  # Normalize if needed
+        transforms.RandomCrop(32, padding=4),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+    
+    # Transform for validation and test data (no augmentation, just normalization)
+    test_val_transform = transforms.Compose([
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize if needed
+    ])
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # Concatenate training data from all clients
+    x_train = np.concatenate([list_clients[id].train_test['x_train'] for id in range(len(list_clients))], axis=0)
+    y_train = np.concatenate([list_clients[id].train_test['y_train'] for id in range(len(list_clients))], axis=0)
+
+    # Concatenate validation data from all clients
+    x_val = np.concatenate([list_clients[id].train_test['x_val'] for id in range(len(list_clients))], axis=0)
+    y_val = np.concatenate([list_clients[id].train_test['y_val'] for id in range(len(list_clients))], axis=0)
+
+    # Concatenate test data from all clients
+    x_test = np.concatenate([list_clients[id].train_test['x_test'] for id in range(len(list_clients))], axis=0)
+    y_test = np.concatenate([list_clients[id].train_test['y_test'] for id in range(len(list_clients))], axis=0)
+
+    # Create Custom Datasets
+    train_dataset = CustomDataset(x_train, y_train, transform=train_transform)
+    val_dataset = CustomDataset(x_val, y_val, transform=test_val_transform)
+    test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
+
+    # Create DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)  # Validation typically not shuffled
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)  # Test data typically not shuffled
+
+    return train_loader, val_loader, test_loader
 
 
 
-def ratio_func(y, multiplier, minority_class):
-    # downsample a label by multiplier
-    target_stats = Counter(y)
-    return {minority_class: int(multiplier * target_stats[minority_class])}
 
-def unbalancing(client,labels_list ,ratio_list):
-    # downsample the dataset of a client with each elements of the labels_list will be downsample with the corresponding ration of ratio_list
+def unbalancing(client : Client ,labels_list : list ,ratio_list: list) -> Client :
+    
+    """ Downsample the dataset of a client with each elements of the labels_list will be downsampled by the corresponding ration of ratio_list
+
+    Arguments: 
+        client : Client whose dataset we want to downsample
+        labels_list : Labels to downsample in the Client's dataset
+        ratio_list : Ratios to use for downsampling the labels
+    """
+    
+    import pandas as pd
     from imblearn.datasets import make_imbalance
+    from math import prod
+
+    def ratio_func(y, multiplier, minority_class):
+    
+        from collections import Counter
+    
+        target_stats = Counter(y)
+        return {minority_class: int(multiplier * target_stats[minority_class])}
+
+
     x_train = client.data['x']
     y_train = client.data['y']
-    (nsamples, i_dim,j_dim) = x_train.shape
-    X_resampled = x_train.reshape(-1, i_dim * j_dim) # flatten the images 
+    
+    orig_shape = x_train.shape
+    
+     # flatten the images 
+    X_resampled = x_train.reshape(-1, prod(orig_shape[1:]))
     y_resampled = y_train
     
     for i in range(len(labels_list)):
+    
         X = pd.DataFrame(X_resampled)
+    
         X_resampled, y_resampled = make_imbalance(X,
                 y_resampled,
                 sampling_strategy=ratio_func,
                 **{"multiplier": ratio_list[i], "minority_class": labels_list[i]})
 
-    ### unflatten the images 
-    client.data['x'] = X_resampled.to_numpy().reshape(-1, i_dim, j_dim)
+    client.data['x'] = X_resampled.to_numpy().reshape(-1, *orig_shape[1:])
     client.data['y'] = y_resampled
     
     return client
 
-def dilate_images(x_train, kernel_size=(3, 3)):
-    import cv2
-    """
-    Perform dilation operation on a batch of images using a given kernel.
+
+def dilate_images(x_train : ndarray, kernel_size : tuple = (3, 3)) -> ndarray:
+    
+    """ Perform dilation operation on a batch of images using a given kernel.
     Make image 'bolder' for features distribution skew setup
-    Parameters:
-        x_train (ndarray): Input batch of images (3D array with shape (n, height, width)).
-        kernel_size (tuple): Size of the structuring element/kernel for dilation.
+    
+    
+    Arguments:
+        x_train : Input batch of images (3D array with shape (n, height, width)).
+        kernel_size : Size of the structuring element/kernel for dilation.
 
     Returns:
-        ndarray: Dilation results for all images in the batch.
+        ndarray Dilation results for all images in the batch.
     """
+    
     import cv2
-    n = x_train.shape[0]  # Number of images in the batch
+    import numpy as np 
+
+    n = x_train.shape[0] 
+
     dilated_images = np.zeros_like(x_train, dtype=np.uint8)
 
     # Create the kernel for dilation
     kernel = np.ones(kernel_size, np.uint8)
 
-    # Iterate over each image in the batch
     for i in range(n):
-        # Perform dilation on the current image
+    
         dilated_image = cv2.dilate(x_train[i], kernel, iterations=1)
-        # Store the dilated image in the results array
+    
         dilated_images[i] = dilated_image
 
     return dilated_images
 
-def erode_images(x_train, kernel_size=(3, 3)):
+
+def erode_images(x_train : ndarray, kernel_size : tuple =(3, 3)) -> ndarray:
     """
     Perform erosion operation on a batch of images using a given kernel.
     Make image 'finner' for features distribution skew setup
 
-    Parameters:
-        x_train (ndarray): Input batch of images (3D array with shape (n, height, width)).
-        kernel_size (tuple): Size of the structuring element/kernel for erosion.
+    Arguments:
+        x_train : Input batch of images (3D array with shape (n, height, width)).
+        kernel_size :  Size of the structuring element/kernel for erosion.
 
     Returns:
-        ndarray: Erosion results for all images in the batch.
+        ndarray of Erosion results for all images in the batch.
     """
+    
     import cv2
-    n = x_train.shape[0]  # Number of images in the batch
+    import numpy as np 
+
+    n = x_train.shape[0]  
     eroded_images = np.zeros_like(x_train, dtype=np.uint8)
 
     # Create the kernel for erosion
@@ -468,19 +776,7 @@ def erode_images(x_train, kernel_size=(3, 3)):
     return eroded_images
 
 
-
-def save_results(model_server, row_exp):
-    
-    import torch
-
-    if row_exp['exp_type'] == "client" or "server":
-        for cluster_id in range(row_exp['num_clusters']): 
-            torch.save(model_server.clusters_models[cluster_id].state_dict(), f"./results/{row_exp['output']}_{row_exp['exp_type']}_model_cluster_{cluster_id}.pth")
-
-    return 
-
-
-def get_uid(str_obj):
+def get_uid(str_obj: str) -> str:
     """
     Generates an (almost) unique Identifier given a string object.
     Note: Collision probability is low enough to be functional for the use case desired which is to uniquely identify experiment parameters using an int

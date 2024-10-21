@@ -1,12 +1,15 @@
 
 from pandas import DataFrame
 from pathlib import Path
-   
+from torch import tensor
 
-def save_histograms():
 
-    """
-    Read result files and save all histogram plots
+def save_histograms() -> None:
+
+    """Read csv files found in 'results/' and generates and saves histogram plots of clients assignemnts
+
+    Raises : 
+        Warning when the csv file is not of the expected format (code generated results csv)
     """
 
     import pandas as pd
@@ -28,13 +31,15 @@ def save_histograms():
                 print(f"Error: Unable to open result file {file_path}.",e)
             
                 continue
-
     return
 
 
 
-def get_clusters(df_results):
+def get_clusters(df_results : DataFrame) -> list:
     
+    """ Function to returns a list of clusters ranging from 0 to max_cluster (uses: append_empty_clusters())
+    """
+
     list_clusters = list(df_results['cluster_id'].unique())
 
     list_clusters = append_empty_clusters(list_clusters)
@@ -42,9 +47,15 @@ def get_clusters(df_results):
     return list_clusters
 
 
-def append_empty_clusters(list_clusters):
+def append_empty_clusters(list_clusters : list) -> list:
     """
-    Handle the situation where some clusters are empty by appending the clusters ID
+    Utility function for ``get_clusters'' to handle the situation where some clusters are empty by appending the clusters ID
+    
+    Arguments:
+        list_clusters: List of clusters with clients
+
+    Returns:
+        List of clusters with or without clients
     """
 
     list_clusters_int = [int(x) for x in list_clusters]
@@ -61,8 +72,10 @@ def append_empty_clusters(list_clusters):
 
 
 
-def get_z_nclients(df_results, x_het, y_clust, labels_heterogeneity):
+def get_z_nclients(df_results : dict, x_het : list, y_clust : list, labels_heterogeneity : list) -> list:
     
+    """ Returns the number of clients associated with a given heterogeneity class for each cluster"""
+
     z_nclients = [0]* len(x_het)
 
     for i in range(len(z_nclients)):
@@ -74,12 +87,31 @@ def get_z_nclients(df_results, x_het, y_clust, labels_heterogeneity):
 
 
 
-def plot_histogram_clusters(df_results: DataFrame, title):
+def plot_img(img : tensor) -> None:
+
+    """Utility function to plot an image of any shape"""
+
+    from torchvision import transforms
+    import matplotlib.pyplot as plt
+
+    plt.imshow(transforms.ToPILImage()(img))
+
+
+
+def plot_histogram_clusters(df_results: DataFrame, title : str) -> None:
+    
+    """ Function to create 3D Histograms of clients to cluster assignments showing client's heterogeneity class 
+
+    Arguments:
+        
+        df_results : DataFrame containing all parameters from the resulting csv files
+        
+        title : The plot title. The image is saved in results/plots/histogram_' + title + '.png'
+    """
     
     import matplotlib.pyplot as plt
     import numpy as np 
         
-
     labels_heterogeneity = list(df_results['heterogeneity_class'].unique())
 
     bar_width = bar_depth = 0.5
@@ -122,10 +154,15 @@ def plot_histogram_clusters(df_results: DataFrame, title):
     plt.title(title, fontdict=None, loc='center', pad=None)
     
     plt.savefig('results/plots/histogram_' + title + '.png')
+    
     plt.close()
 
+    return
 
-def normalize_results(results_accuracy, results_std):
+
+def normalize_results(results_accuracy : float, results_std : float) -> int:
+
+    """Utility function to convert float accuracy and std to percentage """
     
     if results_accuracy < 1:
         
@@ -136,8 +173,10 @@ def normalize_results(results_accuracy, results_std):
     return results_accuracy, results_std
 
 
-def summarize_results():
+def summarize_results() -> None:
 
+    """ Creates results summary of all the results files under "results/summarized_results.csv"""
+        
     from pathlib import Path
     import pandas as pd
     from numpy import mean, std
@@ -164,9 +203,9 @@ def summarize_results():
 
             list_params = path.stem.split('_')      
 
-            dict_exp_results = {"exp_type" : list_params[0], "dataset": list_params[1], "dataset_type": list_params[2], "number_of_clients": list_params[3],
-                                    "samples by_client": list_params[4], "num_clusters": list_params[5], "centralized_epochs": list_params[6],
-                                    "federated_rounds": list_params[7],"accuracy": accuracy}
+            dict_exp_results = {"exp_type" : list_params[0], "dataset": list_params[1], "nn_model" : list_params[2], "dataset_type": list_params[3], "number_of_clients": list_params[4],
+                                    "samples by_client": list_params[5], "num_clusters": list_params[6], "centralized_epochs": list_params[7],
+                                    "federated_rounds": list_params[8],"accuracy": accuracy}
 
             try:
                 
