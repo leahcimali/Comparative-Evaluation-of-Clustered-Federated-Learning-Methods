@@ -1,10 +1,65 @@
 exp_type,dataset,nn_model,heterogeneity_type,num_clients,num_samples_by_label,num_clusters,centralized_epochs,federated_rounds,seed
-pers-centralized,cifar10,convolutional,concept-shift-on-features,48,100,4,200,0,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,50,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,100,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,150,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,20,200,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,50,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,100,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,150,42
-global-federated,cifar10,convolutional,concept-shift-on-features,48,100,4,50,200,42
+server,kmnist, linear,concept-shift-on-labels,48,100,6,10,20,42
+server,fashion-mnist, linear,concept-shift-on-labels,48,100,6,10,20,42
+server,mnist, linear,concept-shift-on-features,48,100,4,10,20,42
+server,kmnist, linear,concept-shift-on-features,48,100,4,10,20,42
+server,fashion-mnist, linear,concept-shift-on-features,48,100,4,10,20,42
+server,mnist, linear,labels-distribution-skew,48,100,4,10,20,42
+server,kmnist, linear,labels-distribution-skew,48,100,4,10,20,42
+server,fashion-mnist, linear,labels-distribution-skew,48,100,4,10,20,42
+server,mnist, linear,features-distribution-skew,48,100,3,10,20,42
+server,kmnist, linear,features-distribution-skew,48,100,3,10,20,42
+server,fashion-mnist, linear,features-distribution-skew,48,100,3,10,20,42
+server,mnist, linear,quantity-skew,48,100,4,10,20,42
+server,kmnist, linear,quantity-skew,48,100,4,10,20,42
+server,fashion-mnist, linear,quantity-skew,48,100,4,10,20,42
+
+client,mnist, linear,concept-shift-on-labels,48,100,6,10,20,42
+client,kmnist, linear,concept-shift-on-labels,48,100,6,10,20,42
+client,fashion-mnist, linear,concept-shift-on-labels,48,100,6,10,20,42
+client,mnist, linear,concept-shift-on-features,48,100,4,10,20,42
+client,kmnist, linear,concept-shift-on-features,48,100,4,10,20,42
+client,fashion-mnist, linear,concept-shift-on-features,48,100,4,10,20,42
+client,mnist, linear,labels-distribution-skew,48,100,4,10,20,42
+client,kmnist, linear,labels-distribution-skew,48,100,4,10,20,42
+client,fashion-mnist, linear,labels-distribution-skew,48,100,4,10,20,42
+client,mnist, linear,features-distribution-skew,48,100,3,10,20,42
+client,kmnist, linear,features-distribution-skew,48,100,3,10,20,42
+client,fashion-mnist, linear,features-distribution-skew,48,100,3,10,20,42
+client,mnist, linear,quantity-skew,48,100,4,10,20,42
+client,kmnist, linear,quantity-skew,48,100,4,10,20,42
+client,fashion-mnist, linear,quantity-skew,48,100,4,10,20,42
+
+global-federated,mnist, linear,concept-shift-on-labels,48,100,6,10,50,42
+global-federated,kmnist, linear,concept-shift-on-labels,48,100,6,10,50,42
+global-federated,fashion-mnist, linear,concept-shift-on-labels,48,100,6,10,50,42
+global-federated,mnist, linear,concept-shift-on-features,48,100,4,10,50,42
+global-federated,kmnist, linear,concept-shift-on-features,48,100,4,10,50,42
+global-federated,fashion-mnist, linear,concept-shift-on-features,48,100,4,10,50,42
+global-federated,mnist, linear,labels-distribution-skew,48,100,4,10,50,42
+global-federated,kmnist, linear,labels-distribution-skew,48,100,4,10,50,42
+global-federated,fashion-mnist, linear,labels-distribution-skew,48,100,4,10,50,42
+global-federated,mnist, linear,features-distribution-skew,48,100,3,10,50,42
+global-federated,kmnist, linear,features-distribution-skew,48,100,3,10,50,42
+global-federated,fashion-mnist, linear,features-distribution-skew,48,100,3,10,50,42
+global-federated,mnist, linear,quantity-skew,48,100,4,10,50,42
+global-federated,kmnist, linear,quantity-skew,48,100,4,10,50,42
+global-federated,fashion-mnist, linear,quantity-skew,48,100,4,10,50,42
+
+pers-centralized,mnist, linear,concept-shift-on-labels,48,100,6,10,50,42
+pers-centralized,kmnist, linear,concept-shift-on-labels,48,100,6,10,50,42
+pers-centralized,fashion-mnist, linear,concept-shift-on-labels,48,100,6,10,50,42
+pers-centralized,mnist, linear,concept-shift-on-features,48,100,4,10,50,42
+pers-centralized,kmnist, linear,concept-shift-on-features,48,100,4,10,50,42
+pers-centralized,fashion-mnist, linear,concept-shift-on-features,48,100,4,10,50,42
+pers-centralized,mnist, linear,labels-distribution-skew,48,100,4,10,50,42
+pers-centralized,kmnist, linear,labels-distribution-skew,48,100,4,10,50,42
+pers-centralized,fashion-mnist, linear,labels-distribution-skew,48,100,4,10,50,42
+pers-centralized,mnist, linear,features-distribution-skew,48,100,3,10,50,42
+pers-centralized,kmnist, linear,features-distribution-skew,48,100,3,10,50,42
+pers-centralized,fashion-mnist, linear,features-distribution-skew,48,100,3,10,50,42
+pers-centralized,mnist, linear,quantity-skew,48,100,4,10,50,42
+pers-centralized,kmnist, linear,quantity-skew,48,100,4,10,50,42
+pers-centralized,fashion-mnist, linear,quantity-skew,48,100,4,10,50,42
+
+
