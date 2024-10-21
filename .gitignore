@@ -12,5 +12,8 @@ pub/*
 data/*
 *.tgz
 *.pyc
-
-src/__pycache__/*
+info.log
+*.ipynb
+launch.json
+backup_results/*
+*.sh

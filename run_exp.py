@@ -20,6 +20,7 @@ with open(csv_file, newline='') as csvfile:
         "python", "driver.py",
         "--exp_type", exp_type,
         "--dataset", dataset,
+
         "--nn_model", nn_model,
         "--heterogeneity_type", heterogeneity_type,
         "--num_clients", num_clients,
@@ -27,8 +28,7 @@ with open(csv_file, newline='') as csvfile:
         "--num_clusters", num_clusters,
         "--centralized_epochs", centralized_epochs,
         "--federated_rounds", federated_rounds,
-        "--seed", seed
-    ]
+        "--seed", seed]
 
     # Run the command
     subprocess.run(command)

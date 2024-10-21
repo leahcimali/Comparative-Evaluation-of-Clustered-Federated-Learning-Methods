@@ -8,5 +8,10 @@
 
 3. Histogram plots and a summary table of various experiments can be obtained running `src/utils_results.py`
   
+To use driver.py use the following parameters : 
 
-  
+`python driver.py --exp_type --dataset --heterogeneity_type  --num_clients --num_samples_by_label --num_clusters --centralized_epochs --federated_rounds --seed ` 
+
+To run all experiments in exp_config.csv user `run_exp.py`. 
+
+Once all experiments are done, to get results run `src/utils_results.src`.
