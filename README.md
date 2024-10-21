@@ -15,3 +15,7 @@ To use driver.py use the following parameters :
 To run all experiments in exp_config.csv user `run_exp.py`. 
 
 Once all experiments are done, to get results run `src/utils_results.src`.
+
+Paper results were done on dataset Mnist, Fashion-Mnist and Kmnist. 
+
+To use Cifar-10 use parameters --dataset cifar10 --nnmodel convolutional. 
