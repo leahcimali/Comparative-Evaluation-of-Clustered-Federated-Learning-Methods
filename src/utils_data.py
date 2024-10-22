@@ -183,7 +183,7 @@ class AddRandomJitter(object):
                                saturation = self.saturation, hue = self.hue)
         return transform(tensor)
 
-class CifarDataset(Dataset):
+class CustomDataset(Dataset):
     
     def __init__(self, data, labels, transform=None):
         # Ensure data is in (N, H, W, C) format
@@ -257,9 +257,9 @@ def data_preparation(client: Client, row_exp: dict) -> None:
 
 
     # Create datasets with transformations
-    train_dataset = CifarDataset(x_train, y_train, transform=train_transform)
-    val_dataset = CifarDataset(x_val, y_val, transform=test_val_transform)
-    test_dataset = CifarDataset(x_test, y_test, transform=test_val_transform)
+    train_dataset = CustomDataset(x_train, y_train, transform=train_transform)
+    val_dataset = CustomDataset(x_val, y_val, transform=test_val_transform)
+    test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
 
     # Create DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
@@ -616,12 +616,14 @@ def swap_labels(labels : list, client : Client, heterogeneity_class : int) -> Cl
     return client
 
 
-def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
+def centralize_data(list_clients: list, row_exp: dict) -> Tuple[DataLoader, DataLoader]:
     """Centralize data of the federated learning setup for central model comparison
 
     Arguments:
         list_clients : The list of Client Objects
+        row_exp : The current experiment's global parameters
 
+        
     Returns:
         Train and test torch DataLoaders with data of all Clients
     """
@@ -630,18 +632,26 @@ def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
     import torch 
     from torch.utils.data import DataLoader,TensorDataset
     import numpy as np 
-
-    train_transform = transforms.Compose([
+    
+    if row_exp['dataset'] == 'cifar10': 
+        train_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(20),  # Normalize if needed
         transforms.RandomCrop(32, padding=4),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+        # Transform for validation and test data (no augmentation, just normalization)
+        test_val_transform = transforms.Compose([
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), ])
+    else : 
+        train_transform = transforms.Compose([
+        transforms.Normalize((0.5,), (0.5,)),  # Normalize if needed
     ])
-    
-    # Transform for validation and test data (no augmentation, just normalization)
-    test_val_transform = transforms.Compose([
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize if needed
-    ])
+        # Transform for validation and test data (no augmentation, just normalization)
+        test_val_transform = transforms.Compose([
+            transforms.Normalize((0.5,), (0.5,)),  # Normalize if needed
+        ])
+
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
@@ -658,9 +668,9 @@ def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
     y_test = np.concatenate([list_clients[id].train_test['y_test'] for id in range(len(list_clients))], axis=0)
 
     # Create Custom Datasets
-    train_dataset = CifarDataset(x_train, y_train, transform=train_transform)
-    val_dataset = CifarDataset(x_val, y_val, transform=test_val_transform)
-    test_dataset = CifarDataset(x_test, y_test, transform=test_val_transform)
+    train_dataset = CustomDataset(x_train, y_train, transform=train_transform)
+    val_dataset = CustomDataset(x_val, y_val, transform=test_val_transform)
+    test_dataset = CustomDataset(x_test, y_test, transform=test_val_transform)
 
     # Create DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
@@ -668,6 +678,7 @@ def centralize_data(list_clients: list) -> Tuple[DataLoader, DataLoader]:
     test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)  # Test data typically not shuffled
 
     return train_loader, val_loader, test_loader
+
 
 
 
