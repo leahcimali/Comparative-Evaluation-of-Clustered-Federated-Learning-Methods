@@ -1,4 +1,5 @@
 exp_type,dataset,nn_model,heterogeneity_type,num_clients,num_samples_by_label,num_clusters,centralized_epochs,federated_rounds,seed
+server,mnist,linear,concept-shift-on-labels,48,100,6,10,20,42
 server,kmnist,linear,concept-shift-on-labels,48,100,6,10,20,42
 server,fashion-mnist,linear,concept-shift-on-labels,48,100,6,10,20,42
 server,mnist,linear,concept-shift-on-features,48,100,4,10,20,42
