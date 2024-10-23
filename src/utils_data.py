@@ -384,15 +384,16 @@ def add_clients_heterogeneity(list_clients: list, row_exp: dict) -> list:
         list_clients = apply_features_skew(list_clients, row_exp)
     elif row_exp['heterogeneity_type'] == "quantity-skew+concept-shift-on-features": #less images altogether for certain clients
         dict_clients = get_clients_data(5,
-                                    int(row_exp['num_samples_by_label'] * 0.1),
+                                    int(row_exp['num_samples_by_label'] * 0.05),
                                     row_exp['dataset'],
                                     row_exp['nn_model'])
-        for id in range(5) :
+        for id in range(6) :
             client = Client(id,dict_clients[id])
             list_clients[id] = client 
         list_clients = apply_rotation(list_clients, row_exp)
-
-
+        for client in list_clients[:6]:
+            client.heterogeneity_class = client.heterogeneity_class + '+quantity-skew'
+              
     return list_clients
 
 
